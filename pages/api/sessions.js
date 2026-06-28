@@ -2,6 +2,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from './auth/[...nextauth]';
 import clientPromise from '../../lib/mongodb';
 
+// A session has status 'active' (in progress, resumable) or 'completed'.
+// There is at most one active session per (user, day); it is upserted on
+// every set change and flipped to 'completed' when the workout is saved.
 export default async function handler(req, res) {
   try {
     const session = await getServerSession(req, res, authOptions);
@@ -9,22 +12,44 @@ export default async function handler(req, res) {
 
     const client = await clientPromise;
     const db = client.db('training');
+    const col = db.collection('sessions');
     const userId = session.user.id || session.user.email;
 
     if (req.method === 'POST') {
-      const { day, exercises, totalSets, doneSets, durationMinutes } = req.body;
-      await db.collection('sessions').insertOne({
-        userId, day, exercises, totalSets, doneSets, durationMinutes,
-        completedAt: new Date(),
-      });
+      const { day, exercises, totalSets, doneSets, completedSets, status } = req.body || {};
+      if (!day) return res.status(400).json({ error: 'day fehlt' });
+
+      const isComplete = status === 'completed';
+      await col.updateOne(
+        { userId, day, status: 'active' },
+        {
+          $set: {
+            userId, day, exercises, totalSets, doneSets,
+            completedSets: completedSets || {},
+            status: isComplete ? 'completed' : 'active',
+            updatedAt: new Date(),
+            ...(isComplete ? { completedAt: new Date() } : {}),
+          },
+          $setOnInsert: { startedAt: new Date() },
+        },
+        { upsert: true },
+      );
       return res.status(200).json({ ok: true });
     }
 
     if (req.method === 'GET') {
-      const { day, limit = 30 } = req.query;
-      const filter = { userId, ...(day ? { day } : {}) };
-      const sessions = await db.collection('sessions')
-        .find(filter).sort({ completedAt: -1 }).limit(parseInt(limit)).toArray();
+      const { status, day, limit = 30 } = req.query;
+
+      if (status === 'active') {
+        const active = await col.find({ userId, status: 'active', ...(day ? { day } : {}) })
+          .sort({ updatedAt: -1 }).toArray();
+        return res.status(200).json(active);
+      }
+
+      // History = everything not currently active (old docs without a status
+      // field count as completed thanks to $ne).
+      const sessions = await col.find({ userId, status: { $ne: 'active' }, ...(day ? { day } : {}) })
+        .sort({ completedAt: -1 }).limit(parseInt(limit)).toArray();
       return res.status(200).json(sessions);
     }
 

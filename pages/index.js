@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
-  CalendarCheck, Layers, Plus, Clock, Home,
+  CalendarCheck, Layers, Plus, Clock, Home, Play,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints };
@@ -228,14 +228,21 @@ function StatsView({ onBack }) {
   );
 }
 
-function OverviewView({ onNew, onStats }) {
+function OverviewView({ onNew, onResume, onStats }) {
   const [sessions, setSessions] = useState([]);
+  const [active, setActive] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/sessions?limit=30')
-      .then(r => r.json())
-      .then(data => { setSessions(Array.isArray(data) ? data : []); setLoading(false); })
+    Promise.all([
+      fetch('/api/sessions?limit=30').then(r => (r.ok ? r.json() : [])),
+      fetch('/api/sessions?status=active').then(r => (r.ok ? r.json() : [])),
+    ])
+      .then(([done, act]) => {
+        setSessions(Array.isArray(done) ? done : []);
+        setActive(Array.isArray(act) ? act : []);
+        setLoading(false);
+      })
       .catch(err => { console.error('[overview] load sessions failed:', err); setLoading(false); });
   }, []);
 
@@ -251,6 +258,30 @@ function OverviewView({ onNew, onStats }) {
         <button onClick={onNew} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '16px', fontSize: 16, fontWeight: 800, cursor: 'pointer', marginBottom: 28 }}>
           <Plus size={20} /> Neue Session starten
         </button>
+
+        {active.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <p style={{ fontSize: 10, color: '#22c55e', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 12px' }}>Laufende Session{active.length > 1 ? 's' : ''}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {active.map((s, i) => {
+                const d = DAYS[s.day];
+                const accent = d?.accent || '#888';
+                return (
+                  <button key={s._id || i} onClick={() => onResume(s.day, s.completedSets || {})} style={{ display: 'flex', alignItems: 'center', gap: 13, background: '#0f1a0f', border: '1px solid #22c55e35', borderRadius: 12, padding: '13px 14px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: accent + '18', border: `1px solid ${accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent }}>
+                      <DayIcon name={d?.icon} size={19} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{d?.label || s.day} Tag</div>
+                      <div style={{ fontSize: 11, color: '#22c55e', marginTop: 2 }}>{s.doneSets}/{s.totalSets} Sets · fortsetzen</div>
+                    </div>
+                    <span style={{ display: 'flex', color: '#22c55e' }}><Play size={18} /></span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <p style={{ fontSize: 10, color: '#6366f1', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 12px' }}>Vergangene Sessions</p>
 
@@ -316,19 +347,53 @@ export default function TrainingApp() {
     if (status !== "loading" && !session && typeof window !== "undefined") window.location.href = "/login";
   }, [status, session]);
 
+  // Restore any in-progress (active) sessions from the server so a workout
+  // can be resumed after reload or on another device.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    fetch('/api/sessions?status=active')
+      .then(r => (r.ok ? r.json() : []))
+      .then(active => {
+        if (!Array.isArray(active) || !active.length) return;
+        setAllSets(prev => {
+          const next = { ...prev };
+          active.forEach(s => { if (next[s.day] !== undefined && s.completedSets) next[s.day] = s.completedSets; });
+          return next;
+        });
+      })
+      .catch(err => console.error('[hydrate active] failed:', err));
+  }, [status]);
+
   if (status === "loading") return <div style={{ minHeight: "100vh", background: "#0c0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b6890", fontFamily: "Inter, sans-serif" }}>Laden…</div>;
   if (!session) return null;
+
+  // Persist the in-progress session (fire-and-forget) so it is stored the
+  // moment it starts and after every set — enabling resume.
+  const persistActive = (dayId, sets) => {
+    const dayObj = DAYS[dayId];
+    const total = dayObj.exercises.reduce((a, e) => a + e.sets, 0);
+    const done = Object.values(sets).filter(Boolean).length;
+    fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ day: dayId, exercises: dayObj.exercises.map(e => e.name), totalSets: total, doneSets: done, completedSets: sets, status: 'active' }),
+    }).catch(err => console.error('[autosave] failed:', err));
+  };
 
   const toggle = (exId, si, rest) => {
     const key = `${exId}-${si}`;
     const already = completedSets[key];
-    setAllSets(prev => ({ ...prev, [activeDay]: { ...prev[activeDay], [key]: !already } }));
+    const updated = { ...completedSets, [key]: !already };
+    setAllSets(prev => ({ ...prev, [activeDay]: updated }));
     if (!already) setTimer({ seconds: rest, accent: day.accent });
+    persistActive(activeDay, updated);
   };
 
   const skip = (exId, si) => {
     const key = `${exId}-${si}`;
-    setAllSets(prev => ({ ...prev, [activeDay]: { ...prev[activeDay], [key]: true } }));
+    const updated = { ...completedSets, [key]: true };
+    setAllSets(prev => ({ ...prev, [activeDay]: updated }));
+    persistActive(activeDay, updated);
   };
 
   const saveSession = async () => {
@@ -339,7 +404,7 @@ export default function TrainingApp() {
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ day: activeDay, exercises: day.exercises.map(e => e.name), totalSets, doneSets, durationMinutes: duration }),
+        body: JSON.stringify({ day: activeDay, exercises: day.exercises.map(e => e.name), totalSets, doneSets, completedSets, durationMinutes: duration, status: 'completed' }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -356,7 +421,11 @@ export default function TrainingApp() {
     }
   };
 
-  if (view === 'overview') return <OverviewView onNew={() => setView('training')} onStats={() => setView('stats')} />;
+  if (view === 'overview') return <OverviewView
+    onNew={() => setView('training')}
+    onResume={(d, sets) => { setAllSets(prev => ({ ...prev, [d]: sets || {} })); setActiveDay(d); setView('training'); }}
+    onStats={() => setView('stats')}
+  />;
   if (view === 'stats') return <StatsView onBack={() => setView('overview')} />;
 
   return (
@@ -392,7 +461,7 @@ export default function TrainingApp() {
               <h1 style={{ fontSize: 24, fontWeight: 800, margin: '4px 0 0', letterSpacing: -0.5, display: 'flex', alignItems: 'center', gap: 9 }}><DayIcon name={day.icon} size={24} color={day.accent} /> {day.label} Tag</h1>
             </div>
             {doneSets > 0 && !finished && (
-              <button onClick={() => setAllSets(prev => ({ ...prev, [activeDay]: {} }))} style={{ background: 'none', border: '1px solid #ffffff15', borderRadius: 8, color: '#555', fontSize: 11, padding: '6px 10px', cursor: 'pointer' }}>Reset</button>
+              <button onClick={() => { setAllSets(prev => ({ ...prev, [activeDay]: {} })); persistActive(activeDay, {}); }} style={{ background: 'none', border: '1px solid #ffffff15', borderRadius: 8, color: '#555', fontSize: 11, padding: '6px 10px', cursor: 'pointer' }}>Reset</button>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>

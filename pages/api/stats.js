@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const userId = session.user.id || session.user.email;
 
     const sessions = await db.collection('sessions')
-      .find({ userId }).sort({ completedAt: -1 }).limit(50).toArray();
+      .find({ userId, status: { $ne: 'active' } }).sort({ completedAt: -1 }).limit(50).toArray();
 
   const today = new Date(); today.setHours(0,0,0,0);
   const sessionDays = [...new Set(sessions.map(s => {
