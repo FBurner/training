@@ -1,46 +1,55 @@
 import NextAuth from 'next-auth';
-import EmailProvider from 'next-auth/providers/email';
-import { MongoDBAdapter } from '@auth/mongodb-adapter';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import bcrypt from 'bcryptjs';
 import clientPromise from '../../../lib/mongodb';
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const authOptions = {
-  adapter: MongoDBAdapter(clientPromise, { databaseName: 'training' }),
   providers: [
-    EmailProvider({
-      from: 'training@breitseite.io',
-      sendVerificationRequest: async ({ identifier: email, url }) => {
-        await resend.emails.send({
-          from: 'Training App <training@breitseite.io>',
-          to: email,
-          subject: '🏋️ Login zu deiner Training App',
-          html: `
-            <div style="font-family: Inter, sans-serif; max-width: 480px; margin: 0 auto; background: #0c0a14; color: #f0eeff; padding: 40px; border-radius: 16px;">
-              <h1 style="font-size: 24px; margin-bottom: 8px;">💪 Training App</h1>
-              <p style="color: #6b6890; margin-bottom: 32px;">Klick den Button um dich anzumelden.</p>
-              <a href="${url}" style="display: inline-block; background: #6366f1; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 15px;">
-                Jetzt anmelden →
-              </a>
-              <p style="color: #444; font-size: 12px; margin-top: 24px;">Link ist 24 Stunden gültig. Falls du das nicht angefragt hast, ignoriere diese E-Mail.</p>
-            </div>
-          `,
-        });
+    CredentialsProvider({
+      name: 'E-Mail & Passwort',
+      credentials: {
+        email: { label: 'E-Mail', type: 'email' },
+        password: { label: 'Passwort', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+        const email = String(credentials.email).toLowerCase().trim();
+
+        const client = await clientPromise;
+        const db = client.db('training');
+        const user = await db.collection('users').findOne({ email });
+        if (!user || !user.passwordHash) return null;
+
+        const valid = await bcrypt.compare(String(credentials.password), user.passwordHash);
+        if (!valid) return null;
+
+        return { id: user._id.toString(), email: user.email, name: user.name || user.email };
       },
     }),
   ],
   pages: {
     signIn: '/login',
-    verifyRequest: '/verify',
   },
   session: { strategy: 'jwt' },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.sub = user.id;
+        token.email = user.email;
+        token.name = user.name;
+      }
+      return token;
+    },
     async session({ session, token }) {
-      if (session.user) session.user.id = token.sub;
+      if (session.user) {
+        session.user.id = token.sub;
+        session.user.email = token.email;
+        session.user.name = token.name;
+      }
       return session;
     },
   },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export default NextAuth(authOptions);
