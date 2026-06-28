@@ -299,6 +299,7 @@ export default function TrainingApp() {
   const [timer, setTimer] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const day = DAYS[activeDay];
   const completedSets = allSets[activeDay];
@@ -332,16 +333,27 @@ export default function TrainingApp() {
 
   const saveSession = async () => {
     setSaving(true);
+    setSaveError(null);
     const duration = startTime ? Math.round((Date.now() - startTime) / 60000) : null;
-    await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ day: activeDay, exercises: day.exercises.map(e => e.name), totalSets, doneSets, durationMinutes: duration }),
-    });
-    setSaving(false);
-    setAllSets(prev => ({ ...prev, [activeDay]: {} }));
-    setStartTime(null);
-    setView('stats');
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day: activeDay, exercises: day.exercises.map(e => e.name), totalSets, doneSets, durationMinutes: duration }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Speichern fehlgeschlagen (HTTP ${res.status})`);
+      }
+      setAllSets(prev => ({ ...prev, [activeDay]: {} }));
+      setStartTime(null);
+      setView('overview');
+    } catch (err) {
+      console.error('[saveSession] failed:', err);
+      setSaveError(err?.message || 'Speichern fehlgeschlagen');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (view === 'overview') return <OverviewView onNew={() => setView('training')} onStats={() => setView('stats')} />;
@@ -414,6 +426,9 @@ export default function TrainingApp() {
             <button onClick={saveSession} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#22c55e', color: '#000', border: 'none', borderRadius: 10, padding: '14px 32px', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 15, fontWeight: 800, opacity: saving ? 0.7 : 1 }}>
               {saving ? 'Speichern…' : <><Save size={16} /> Session speichern</>}
             </button>
+            {saveError && (
+              <div style={{ marginTop: 12, color: '#f87171', fontSize: 12, lineHeight: 1.5 }}>{saveError}</div>
+            )}
           </div>
         )}
 
