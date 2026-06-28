@@ -230,8 +230,6 @@ function StatsView({ onBack }) {
 
 export default function TrainingApp() {
   const { data: session, status } = useSession();
-  if (status === "loading") return <div style={{ minHeight: "100vh", background: "#0c0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b6890", fontFamily: "Inter, sans-serif" }}>Laden…</div>;
-  if (!session) { if (typeof window !== "undefined") window.location.href = "/login"; return null; }
   const [view, setView] = useState('training'); // 'training' | 'stats'
   const [activeDay, setActiveDay] = useState('brust');
   const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {} });
@@ -249,6 +247,13 @@ export default function TrainingApp() {
   useEffect(() => {
     if (doneSets === 1 && !startTime) setStartTime(Date.now());
   }, [doneSets]);
+
+  useEffect(() => {
+    if (status !== "loading" && !session && typeof window !== "undefined") window.location.href = "/login";
+  }, [status, session]);
+
+  if (status === "loading") return <div style={{ minHeight: "100vh", background: "#0c0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b6890", fontFamily: "Inter, sans-serif" }}>Laden…</div>;
+  if (!session) return null;
 
   const toggle = (exId, si, rest) => {
     const key = `${exId}-${si}`;
