@@ -36,7 +36,9 @@ export default function Login() {
 
       const result = await signIn('credentials', { email, password, redirect: false });
       if (result?.error) {
-        setError(mode === 'register' ? 'Konto erstellt, Login fehlgeschlagen.' : 'E-Mail oder Passwort falsch');
+        const base = mode === 'register' ? 'Konto erstellt, Login fehlgeschlagen' : 'E-Mail oder Passwort falsch';
+        // Show the real server error when it's not the generic "bad credentials" code.
+        setError(result.error && result.error !== 'CredentialsSignin' ? `${base}: ${result.error}` : base);
         setLoading(false);
         return;
       }

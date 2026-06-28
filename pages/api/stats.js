@@ -3,15 +3,16 @@ import { authOptions } from './auth/[...nextauth]';
 import clientPromise from '../../lib/mongodb';
 
 export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const session = await getServerSession(req, res, authOptions);
+    if (!session) return res.status(401).json({ error: 'Unauthorized' });
 
-  const client = await clientPromise;
-  const db = client.db('training');
-  const userId = session.user.id || session.user.email;
+    const client = await clientPromise;
+    const db = client.db('training');
+    const userId = session.user.id || session.user.email;
 
-  const sessions = await db.collection('sessions')
-    .find({ userId }).sort({ completedAt: -1 }).limit(50).toArray();
+    const sessions = await db.collection('sessions')
+      .find({ userId }).sort({ completedAt: -1 }).limit(50).toArray();
 
   const today = new Date(); today.setHours(0,0,0,0);
   const sessionDays = [...new Set(sessions.map(s => {
@@ -32,10 +33,14 @@ export default async function handler(req, res) {
     });
   });
 
-  res.status(200).json({
-    streak,
-    volumeByDay,
-    totalSessions: sessions.length,
-    totalSets: sessions.reduce((a, s) => a + (s.doneSets || 0), 0),
-  });
+    return res.status(200).json({
+      streak,
+      volumeByDay,
+      totalSessions: sessions.length,
+      totalSets: sessions.reduce((a, s) => a + (s.doneSets || 0), 0),
+    });
+  } catch (err) {
+    console.error('[api/stats] failed:', err);
+    return res.status(500).json({ error: `Serverfehler: ${err?.message || 'unbekannt'}` });
+  }
 }

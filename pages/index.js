@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
-  CalendarCheck, Layers,
+  CalendarCheck, Layers, Plus, Clock, Home,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints };
@@ -228,9 +228,72 @@ function StatsView({ onBack }) {
   );
 }
 
+function OverviewView({ onNew, onStats }) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/sessions?limit=30')
+      .then(r => r.json())
+      .then(data => { setSessions(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(err => { console.error('[overview] load sessions failed:', err); setLoading(false); });
+  }, []);
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 60 }}>
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '28px 16px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Deine Sessions</h1>
+          <button onClick={onStats} title="Statistiken" style={{ width: 42, height: 42, background: 'transparent', border: '1px solid #ffffff12', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BarChart3 size={18} /></button>
+        </div>
+        <p style={{ color: '#6b6890', fontSize: 14, margin: '0 0 22px' }}>Überblick über dein Training.</p>
+
+        <button onClick={onNew} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '16px', fontSize: 16, fontWeight: 800, cursor: 'pointer', marginBottom: 28 }}>
+          <Plus size={20} /> Neue Session starten
+        </button>
+
+        <p style={{ fontSize: 10, color: '#6366f1', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 12px' }}>Vergangene Sessions</p>
+
+        {loading ? (
+          <div style={{ color: '#555', fontSize: 13, padding: '24px 0', textAlign: 'center' }}>Lade…</div>
+        ) : sessions.length === 0 ? (
+          <div style={{ background: '#ffffff04', border: '1px solid #ffffff08', borderRadius: 12, padding: '28px 16px', textAlign: 'center', color: '#555', fontSize: 13 }}>
+            Noch keine Sessions gespeichert — starte deine erste!
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {sessions.map((s, i) => {
+              const d = DAYS[s.day];
+              const accent = d?.accent || '#888';
+              return (
+                <div key={s._id || i} style={{ display: 'flex', alignItems: 'center', gap: 13, background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '13px 14px' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: accent + '18', border: `1px solid ${accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent }}>
+                    <DayIcon name={d?.icon} size={19} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{d?.label || s.day} Tag</div>
+                    <div style={{ fontSize: 11, color: '#555', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                      <span>{new Date(s.completedAt).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                      {s.durationMinutes ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>· <Clock size={11} /> {s.durationMinutes} Min</span> : null}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: accent }}>{s.doneSets}</div>
+                    <div style={{ fontSize: 10, color: '#555' }}>von {s.totalSets} Sets</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function TrainingApp() {
   const { data: session, status } = useSession();
-  const [view, setView] = useState('training'); // 'training' | 'stats'
+  const [view, setView] = useState('overview'); // 'overview' | 'training' | 'stats'
   const [activeDay, setActiveDay] = useState('brust');
   const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {} });
   const [timer, setTimer] = useState(null);
@@ -281,7 +344,8 @@ export default function TrainingApp() {
     setView('stats');
   };
 
-  if (view === 'stats') return <StatsView onBack={() => setView('training')} />;
+  if (view === 'overview') return <OverviewView onNew={() => setView('training')} onStats={() => setView('stats')} />;
+  if (view === 'stats') return <StatsView onBack={() => setView('overview')} />;
 
   return (
     <div style={{ minHeight: '100vh', background: day.bg, fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', transition: 'background 0.3s', paddingBottom: 60 }}>
@@ -290,6 +354,7 @@ export default function TrainingApp() {
       {/* Nav */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: day.bg + 'ee', backdropFilter: 'blur(10px)', borderBottom: '1px solid #ffffff08', padding: '10px 14px' }}>
         <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', gap: 8 }}>
+          <button onClick={() => setView('overview')} title="Übersicht" style={{ width: 44, background: 'transparent', border: '1px solid #ffffff10', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Home size={18} /></button>
           {Object.values(DAYS).map(d => {
             const dTotal = d.exercises.reduce((a, e) => a + e.sets, 0);
             const dDone = Object.values(allSets[d.id]).filter(Boolean).length;

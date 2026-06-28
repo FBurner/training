@@ -12,18 +12,29 @@ export const authOptions = {
         password: { label: 'Passwort', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-        const email = String(credentials.email).toLowerCase().trim();
+        try {
+          if (!credentials?.email || !credentials?.password) return null;
+          const email = String(credentials.email).toLowerCase().trim();
 
-        const client = await clientPromise;
-        const db = client.db('training');
-        const user = await db.collection('users').findOne({ email });
-        if (!user || !user.passwordHash) return null;
+          const client = await clientPromise;
+          const db = client.db('training');
+          const user = await db.collection('users').findOne({ email });
+          if (!user || !user.passwordHash) {
+            console.warn('[auth] no user / no password hash for', email);
+            return null;
+          }
 
-        const valid = await bcrypt.compare(String(credentials.password), user.passwordHash);
-        if (!valid) return null;
+          const valid = await bcrypt.compare(String(credentials.password), user.passwordHash);
+          if (!valid) {
+            console.warn('[auth] wrong password for', email);
+            return null;
+          }
 
-        return { id: user._id.toString(), email: user.email, name: user.name || user.email };
+          return { id: user._id.toString(), email: user.email, name: user.name || user.email };
+        } catch (err) {
+          console.error('[auth] authorize failed:', err);
+          throw new Error(`Auth-Serverfehler: ${err?.message || 'unbekannt'}`);
+        }
       },
     }),
   ],
@@ -50,6 +61,12 @@ export const authOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: true,
+  logger: {
+    error(code, metadata) { console.error('[next-auth][error]', code, metadata); },
+    warn(code) { console.warn('[next-auth][warn]', code); },
+    debug(code, metadata) { console.log('[next-auth][debug]', code, metadata); },
+  },
 };
 
 export default NextAuth(authOptions);
