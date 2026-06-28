@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { Dumbbell } from 'lucide-react';
 
 export default function Login() {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
@@ -49,7 +50,7 @@ export default function Login() {
   return (
     <div style={{ minHeight: '100vh', background: '#0c0a14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, system-ui, sans-serif', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 380, textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>💪</div>
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center', color: '#6366f1' }}><Dumbbell size={44} /></div>
         <h1 style={{ fontSize: 26, fontWeight: 800, color: '#f0eeff', marginBottom: 8 }}>Training App</h1>
         <p style={{ color: '#6b6890', fontSize: 14, marginBottom: 36 }}>
           {mode === 'login' ? 'Melde dich mit E-Mail und Passwort an.' : 'Erstelle ein Konto mit E-Mail und Passwort.'}
@@ -83,7 +84,7 @@ export default function Login() {
           disabled={loading || !email || !password}
           style={{ width: '100%', background: loading ? '#2d2a3e' : '#6366f1', color: '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 15, fontWeight: 700, cursor: (loading || !email || !password) ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}
         >
-          {loading ? 'Bitte warten…' : mode === 'login' ? 'Anmelden →' : 'Konto erstellen →'}
+          {loading ? 'Bitte warten…' : mode === 'login' ? 'Anmelden' : 'Konto erstellen'}
         </button>
 
         <div style={{ marginTop: 20, color: '#6b6890', fontSize: 13 }}>

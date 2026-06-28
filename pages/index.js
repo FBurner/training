@@ -2,6 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { DAYS } from '../lib/data';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
+  Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
+  CalendarCheck, Layers,
+} from 'lucide-react';
+
+const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints };
+
+function DayIcon({ name, ...props }) {
+  const Icon = DAY_ICONS[name] || Dumbbell;
+  return <Icon {...props} />;
+}
 
 function RestTimer({ seconds, accent, onClose }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -25,11 +37,11 @@ function RestTimer({ seconds, accent, onClose }) {
               strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear' }} />
           </svg>
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 800, color: done ? '#22c55e' : '#fff', fontVariantNumeric: 'tabular-nums' }}>
-            {done ? '✓' : `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`}
+            {done ? <Check size={44} strokeWidth={3} /> : `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`}
           </div>
         </div>
-        <button onClick={onClose} style={{ background: done ? '#22c55e' : accent + '20', color: done ? '#000' : accent, border: `1px solid ${done ? '#22c55e' : accent + '40'}`, borderRadius: 10, padding: '12px 36px', cursor: 'pointer', fontSize: 15, fontWeight: 700 }}>
-          {done ? 'Weiter ✓' : 'Überspringen'}
+        <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: done ? '#22c55e' : accent + '20', color: done ? '#000' : accent, border: `1px solid ${done ? '#22c55e' : accent + '40'}`, borderRadius: 10, padding: '12px 36px', cursor: 'pointer', fontSize: 15, fontWeight: 700 }}>
+          {done && <Check size={16} strokeWidth={3} />}{done ? 'Weiter' : 'Überspringen'}
         </button>
       </div>
     </div>
@@ -45,8 +57,8 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
   return (
     <div style={{ background: bgCard, border: `1px solid ${allDone ? '#22c55e25' : open ? accent + '35' : '#ffffff08'}`, borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.2s' }}>
       <button onClick={() => setOpen(!open)} style={{ width: '100%', background: 'none', border: 'none', padding: '15px 16px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: allDone ? '#1a3a1a' : accentDim, border: `1px solid ${allDone ? '#22c55e40' : accent + '30'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: allDone ? '#22c55e' : accent }}>
-          {allDone ? '✓' : ex.primary ? '★' : '○'}
+        <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: allDone ? '#1a3a1a' : accentDim, border: `1px solid ${allDone ? '#22c55e40' : accent + '30'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: allDone ? '#22c55e' : accent }}>
+          {allDone ? <Check size={17} strokeWidth={3} /> : ex.primary ? <Star size={15} fill="currentColor" /> : <Circle size={12} />}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -60,7 +72,7 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
         <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
           {states.map((d, i) => <div key={i} style={{ width: 5, height: 5, borderRadius: 99, background: d ? accent : '#2a2a2a' }} />)}
         </div>
-        <span style={{ color: '#333', fontSize: 11, marginLeft: 4 }}>{open ? '▲' : '▼'}</span>
+        <span style={{ color: '#333', marginLeft: 4, display: 'flex' }}>{open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</span>
       </button>
 
       {open && (
@@ -73,7 +85,7 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
               <div key={si} style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => onToggle(ex.id, si, ex.rest)} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, background: d ? '#1a3a1a' : '#00000030', border: `1px solid ${d ? '#22c55e40' : '#ffffff08'}`, borderRadius: 10, padding: '11px 14px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
                   <div style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, background: d ? '#22c55e' : accentDim, border: `1px solid ${d ? '#22c55e' : accent + '40'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: d ? '#000' : accent, fontSize: 13, fontWeight: 700 }}>
-                    {d ? '✓' : si + 1}
+                    {d ? <Check size={15} strokeWidth={3} /> : si + 1}
                   </div>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: d ? '#555' : '#eee' }}>Set {si + 1}</span>
@@ -83,7 +95,7 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
                   {!d && <span style={{ fontSize: 10, color: accent, fontWeight: 700 }}>DONE</span>}
                 </button>
                 {!d && (
-                  <button onClick={() => onSkip(ex.id, si)} title="Überspringen" style={{ width: 40, background: '#1a1a1a', border: '1px solid #ffffff08', borderRadius: 10, cursor: 'pointer', color: '#555', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⤵</button>
+                  <button onClick={() => onSkip(ex.id, si)} title="Überspringen" style={{ width: 40, background: '#1a1a1a', border: '1px solid #ffffff08', borderRadius: 10, cursor: 'pointer', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><CornerDownRight size={16} /></button>
                 )}
               </div>
             ))}
@@ -115,7 +127,7 @@ function StatsView({ onBack }) {
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#080808', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
+        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center', color: '#6366f1' }}><BarChart3 size={32} /></div>
         <div style={{ color: '#555' }}>Lade Statistiken…</div>
       </div>
     </div>
@@ -133,22 +145,22 @@ function StatsView({ onBack }) {
   return (
     <div style={{ minHeight: '100vh', background: '#080808', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 60 }}>
       <div style={{ background: '#0d0d0d', borderBottom: '1px solid #ffffff08', padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={onBack} style={{ background: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8, color: '#888', padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>← Zurück</button>
-        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>📊 Statistiken</h1>
+        <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8, color: '#888', padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}><ArrowLeft size={15} /> Zurück</button>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart3 size={20} /> Statistiken</h1>
       </div>
 
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
         {/* KPI Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
           {[
-            { label: 'Sessions', value: stats.totalSessions, emoji: '🏋️' },
-            { label: 'Total Sets', value: stats.totalSets, emoji: '💪' },
-            { label: 'Streak', value: `${stats.streak}x`, emoji: '🔥' },
-          ].map(k => (
-            <div key={k.label} style={{ background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '14px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 22, marginBottom: 4 }}>{k.emoji}</div>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{k.value}</div>
-              <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{k.label}</div>
+            { label: 'Sessions', value: stats.totalSessions, Icon: CalendarCheck, color: '#6366f1' },
+            { label: 'Total Sets', value: stats.totalSets, Icon: Layers, color: '#0ea5e9' },
+            { label: 'Streak', value: `${stats.streak}x`, Icon: Flame, color: '#f59e0b' },
+          ].map(({ label, value, Icon, color }) => (
+            <div key={label} style={{ background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '14px 12px', textAlign: 'center' }}>
+              <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'center', color }}><Icon size={20} /></div>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>{value}</div>
+              <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>{label}</div>
             </div>
           ))}
         </div>
@@ -158,13 +170,13 @@ function StatsView({ onBack }) {
           <p style={{ fontSize: 10, color: '#6366f1', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 14px' }}>Trainingstage</p>
           <div style={{ display: 'flex', gap: 10 }}>
             {[
-              { id: 'brust', label: '💪 Brust', color: '#6366f1', count: dayCount.brust },
-              { id: 'ruecken', label: '🧍 Rücken', color: '#0ea5e9', count: dayCount.ruecken },
-              { id: 'beine', label: '🦵 Beine', color: '#f59e0b', count: dayCount.beine },
+              { id: 'brust', label: 'Brust', icon: 'dumbbell', color: '#6366f1', count: dayCount.brust },
+              { id: 'ruecken', label: 'Rücken', icon: 'back', color: '#0ea5e9', count: dayCount.ruecken },
+              { id: 'beine', label: 'Beine', icon: 'legs', color: '#f59e0b', count: dayCount.beine },
             ].map(d => (
               <div key={d.id} style={{ flex: 1, background: d.color + '10', border: `1px solid ${d.color}25`, borderRadius: 10, padding: '12px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: d.color }}>{d.count}</div>
-                <div style={{ fontSize: 10, color: '#555', marginTop: 3 }}>{d.label}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 10, color: '#555', marginTop: 3 }}><DayIcon name={d.icon} size={13} color={d.color} /> {d.label}</div>
               </div>
             ))}
           </div>
@@ -196,7 +208,7 @@ function StatsView({ onBack }) {
                 const d = DAYS[s.day];
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#ffffff04', borderRadius: 10, padding: '10px 12px' }}>
-                    <span style={{ fontSize: 20 }}>{d?.emoji || '🏋️'}</span>
+                    <span style={{ display: 'flex' }}><DayIcon name={d?.icon} size={20} color={d?.accent || '#888'} /></span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{d?.label || s.day} Tag</div>
                       <div style={{ fontSize: 11, color: '#555' }}>{new Date(s.completedAt).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
@@ -279,13 +291,13 @@ export default function TrainingApp() {
             const active = activeDay === d.id;
             return (
               <button key={d.id} onClick={() => setActiveDay(d.id)} style={{ flex: 1, background: active ? d.accent + '20' : 'transparent', border: `1px solid ${active ? d.accent + '60' : '#ffffff10'}`, borderRadius: 10, padding: '8px 4px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, transition: 'all 0.2s' }}>
-                <span style={{ fontSize: 16 }}>{d.emoji}</span>
+                <DayIcon name={d.icon} size={17} color={active ? d.accent : '#666'} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: active ? d.accent : '#555' }}>{d.label}</span>
                 {dDone > 0 && <span style={{ fontSize: 9, color: dDone === dTotal ? '#22c55e' : d.accent, fontWeight: 600 }}>{dDone}/{dTotal}</span>}
               </button>
             );
           })}
-          <button onClick={() => setView('stats')} style={{ width: 44, background: 'transparent', border: '1px solid #ffffff10', borderRadius: 10, cursor: 'pointer', color: '#555', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📊</button>
+          <button onClick={() => setView('stats')} style={{ width: 44, background: 'transparent', border: '1px solid #ffffff10', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BarChart3 size={18} /></button>
         </div>
       </div>
 
@@ -295,7 +307,7 @@ export default function TrainingApp() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <span style={{ fontSize: 10, color: day.accent, letterSpacing: 3, textTransform: 'uppercase', fontWeight: 600 }}>{day.tag}</span>
-              <h1 style={{ fontSize: 24, fontWeight: 800, margin: '4px 0 0', letterSpacing: -0.5 }}>{day.emoji} {day.label} Tag</h1>
+              <h1 style={{ fontSize: 24, fontWeight: 800, margin: '4px 0 0', letterSpacing: -0.5, display: 'flex', alignItems: 'center', gap: 9 }}><DayIcon name={day.icon} size={24} color={day.accent} /> {day.label} Tag</h1>
             </div>
             {doneSets > 0 && !finished && (
               <button onClick={() => setAllSets(prev => ({ ...prev, [activeDay]: {} }))} style={{ background: 'none', border: '1px solid #ffffff15', borderRadius: 8, color: '#555', fontSize: 11, padding: '6px 10px', cursor: 'pointer' }}>Reset</button>
@@ -326,11 +338,11 @@ export default function TrainingApp() {
 
         {finished && (
           <div style={{ background: 'linear-gradient(135deg, #1a3a1a, #0f2010)', border: '1px solid #22c55e30', borderRadius: 14, padding: '22px', textAlign: 'center', marginTop: 4 }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>🏆</div>
+            <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center', color: '#22c55e' }}><Trophy size={32} /></div>
             <div style={{ fontSize: 18, fontWeight: 800, color: '#22c55e' }}>{day.label} Tag abgeschlossen!</div>
             <div style={{ fontSize: 12, color: '#555', marginTop: 4, marginBottom: 18 }}>{totalSets} Sets · Gut gemacht, Fabian</div>
-            <button onClick={saveSession} disabled={saving} style={{ background: '#22c55e', color: '#000', border: 'none', borderRadius: 10, padding: '14px 32px', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 15, fontWeight: 800, opacity: saving ? 0.7 : 1 }}>
-              {saving ? 'Speichern…' : '💾 Session speichern'}
+            <button onClick={saveSession} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#22c55e', color: '#000', border: 'none', borderRadius: 10, padding: '14px 32px', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 15, fontWeight: 800, opacity: saving ? 0.7 : 1 }}>
+              {saving ? 'Speichern…' : <><Save size={16} /> Session speichern</>}
             </button>
           </div>
         )}
