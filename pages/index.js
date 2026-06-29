@@ -432,7 +432,7 @@ export default function TrainingApp() {
   };
 
   if (view === 'overview') return <OverviewView
-    onNew={() => setView('training')}
+    onNew={() => { persistActive(activeDay, allSets[activeDay] || {}); setView('training'); }}
     onResume={(d, sets) => { setAllSets(prev => ({ ...prev, [d]: sets || {} })); setActiveDay(d); setView('training'); }}
     onStats={() => setView('stats')}
   />;
