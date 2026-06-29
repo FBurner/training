@@ -331,6 +331,7 @@ export default function TrainingApp() {
   const [startTime, setStartTime] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [syncState, setSyncState] = useState(null); // null | 'saving' | 'saved' | error string
 
   const day = DAYS[activeDay];
   const completedSets = allSets[activeDay];
@@ -373,11 +374,20 @@ export default function TrainingApp() {
     const dayObj = DAYS[dayId];
     const total = dayObj.exercises.reduce((a, e) => a + e.sets, 0);
     const done = Object.values(sets).filter(Boolean).length;
+    setSyncState('saving');
     fetch('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ day: dayId, exercises: dayObj.exercises.map(e => e.name), totalSets: total, doneSets: done, completedSets: sets, status: 'active' }),
-    }).catch(err => console.error('[autosave] failed:', err));
+    })
+      .then(async r => {
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          throw new Error(d.error || `HTTP ${r.status}`);
+        }
+        setSyncState('saved');
+      })
+      .catch(err => { console.error('[autosave] failed:', err); setSyncState(`Sync-Fehler: ${err.message}`); });
   };
 
   const toggle = (exId, si, rest) => {
@@ -458,6 +468,11 @@ export default function TrainingApp() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <span style={{ fontSize: 10, color: day.accent, letterSpacing: 3, textTransform: 'uppercase', fontWeight: 600 }}>{day.tag}</span>
+              {syncState && (
+                <span style={{ display: 'block', fontSize: 10, marginTop: 3, fontWeight: 600, color: String(syncState).startsWith('Sync-Fehler') ? '#f87171' : '#22c55e' }}>
+                  {syncState === 'saving' ? 'Speichere…' : syncState === 'saved' ? 'Gespeichert' : syncState}
+                </span>
+              )}
               <h1 style={{ fontSize: 24, fontWeight: 800, margin: '4px 0 0', letterSpacing: -0.5, display: 'flex', alignItems: 'center', gap: 9 }}><DayIcon name={day.icon} size={24} color={day.accent} /> {day.label} Tag</h1>
             </div>
             {doneSets > 0 && !finished && (
