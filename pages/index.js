@@ -6,6 +6,7 @@ import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
+  TrendingUp, User,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints };
@@ -14,6 +15,16 @@ function DayIcon({ name, ...props }) {
   const Icon = DAY_ICONS[name] || Dumbbell;
   return <Icon {...props} />;
 }
+
+// First number in a suggested-weight string ("28–30 kg" -> 28, "Körpergewicht" -> 0).
+function parseWeight(str) {
+  if (!str) return 0;
+  const m = String(str).match(/\d+(?:[.,]\d+)?/);
+  return m ? Math.round(parseFloat(m[0].replace(',', '.'))) : 0;
+}
+
+// Progressive-overload step: bigger jump for primary compound lifts.
+function stepFor(ex) { return ex.primary ? 5 : 2.5; }
 
 function RestTimer({ seconds, accent, onClose }) {
   const [remaining, setRemaining] = useState(seconds);
@@ -48,11 +59,14 @@ function RestTimer({ seconds, accent, onClose }) {
   );
 }
 
-function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, onSkip }) {
+function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, onSkip, weight, onWeight, prevWeight }) {
   const [open, setOpen] = useState(false);
   const states = Array.from({ length: ex.sets }, (_, i) => !!completedSets[`${ex.id}-${i}`]);
   const done = states.filter(Boolean).length;
   const allDone = done === ex.sets;
+  const step = stepFor(ex);
+  const w = weight === '' || weight == null ? null : Number(weight);
+  const nextTarget = w && w > 0 ? w + step : null;
 
   return (
     <div style={{ background: bgCard, border: `1px solid ${allDone ? '#22c55e25' : open ? accent + '35' : '#ffffff08'}`, borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.2s' }}>
@@ -80,6 +94,21 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
           <div style={{ background: '#00000030', borderRadius: 8, padding: '10px 13px', margin: '12px 0', borderLeft: `3px solid ${ex.posture ? '#10b981' : accent}` }}>
             <p style={{ fontSize: 12, color: ex.posture ? '#6ee7b7' : accent + 'cc', margin: 0, lineHeight: 1.65 }}>{ex.tip}</p>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+            <label style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Gewicht</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="number" inputMode="decimal" min="0" step="0.5"
+                value={weight ?? ''}
+                placeholder={String(parseWeight(ex.weight) || '')}
+                onChange={e => onWeight(ex.id, e.target.value === '' ? '' : Number(e.target.value))}
+                onClick={e => e.stopPropagation()}
+                style={{ width: 84, background: '#00000040', border: `1px solid ${accent}40`, borderRadius: 8, padding: '8px 10px', color: '#fff', fontSize: 14, outline: 'none' }}
+              />
+              <span style={{ fontSize: 12, color: '#666' }}>kg</span>
+            </div>
+            <span style={{ fontSize: 11, color: '#555' }}>{prevWeight ? `zuletzt ${prevWeight} kg` : `Vorschlag ${ex.weight}`}</span>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             {states.map((d, si) => (
               <div key={si} style={{ display: 'flex', gap: 8 }}>
@@ -100,6 +129,15 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
               </div>
             ))}
           </div>
+          {allDone && nextTarget && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, background: '#0f1a0f', border: '1px solid #22c55e30', borderRadius: 8, padding: '10px 12px', marginTop: 12 }}>
+              <TrendingUp size={16} color="#22c55e" />
+              <div>
+                <div style={{ fontSize: 12, color: '#22c55e', fontWeight: 700 }}>Nächstes Mal: {nextTarget} kg</div>
+                <div style={{ fontSize: 11, color: '#6b6890' }}>+{step} kg Steigerung empfohlen</div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -228,7 +266,7 @@ function StatsView({ onBack }) {
   );
 }
 
-function OverviewView({ onNew, onResume, onStats }) {
+function OverviewView({ onNew, onResume, onStats, onProfile }) {
   const [sessions, setSessions] = useState([]);
   const [active, setActive] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -246,33 +284,16 @@ function OverviewView({ onNew, onResume, onStats }) {
       .catch(err => { console.error('[overview] load sessions failed:', err); setLoading(false); });
   }, []);
 
-  const deleteOne = async (id) => {
-    if (!id || !window.confirm('Diese Session wirklich löschen?')) return;
-    try {
-      const r = await fetch(`/api/sessions?id=${id}`, { method: 'DELETE' });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
-      setSessions(s => s.filter(x => String(x._id) !== String(id)));
-      setActive(a => a.filter(x => String(x._id) !== String(id)));
-    } catch (e) { alert('Löschen fehlgeschlagen: ' + e.message); }
-  };
-
-  const deleteAll = async () => {
-    if (!window.confirm('ALLE Sessions löschen? Das kann nicht rückgängig gemacht werden.')) return;
-    try {
-      const r = await fetch('/api/sessions?all=true', { method: 'DELETE' });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
-      setSessions([]); setActive([]);
-    } catch (e) { alert('Löschen fehlgeschlagen: ' + e.message); }
-  };
-
-  const allForDelete = [...active, ...sessions];
 
   return (
     <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 60 }}>
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '28px 16px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Deine Sessions</h1>
-          <button onClick={onStats} title="Statistiken" style={{ width: 42, height: 42, background: 'transparent', border: '1px solid #ffffff12', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BarChart3 size={18} /></button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onProfile} title="Profil" style={{ width: 42, height: 42, background: 'transparent', border: '1px solid #ffffff12', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={18} /></button>
+            <button onClick={onStats} title="Statistiken" style={{ width: 42, height: 42, background: 'transparent', border: '1px solid #ffffff12', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BarChart3 size={18} /></button>
+          </div>
         </div>
         <p style={{ color: '#6b6890', fontSize: 14, margin: '0 0 22px' }}>Überblick über dein Training.</p>
 
@@ -338,29 +359,103 @@ function OverviewView({ onNew, onResume, onStats }) {
             })}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
 
-        <div style={{ marginTop: 34, border: '1px solid #f8717140', borderRadius: 12, padding: '16px', background: '#160e10' }}>
-          <p style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: '#f87171', letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 6px' }}><AlertTriangle size={14} /> Danger Zone</p>
-          <p style={{ color: '#6b6890', fontSize: 12, margin: '0 0 14px' }}>Sessions löschen — kann nicht rückgängig gemacht werden.</p>
+function ProfileView({ onBack }) {
+  const [profile, setProfile] = useState(null);
+  const [bw, setBw] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
 
-          {allForDelete.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-              {allForDelete.map((s, i) => {
-                const d = DAYS[s.day];
-                return (
-                  <div key={s._id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#00000030', borderRadius: 8, padding: '8px 10px' }}>
-                    <span style={{ display: 'flex', color: d?.accent || '#888' }}><DayIcon name={d?.icon} size={15} /></span>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: '#aaa' }}>
-                      {d?.label || s.day}{s.status === 'active' ? ' · läuft' : ''} · {new Date(s.completedAt || s.startedAt || s.updatedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                    </span>
-                    <button onClick={() => deleteOne(s._id)} title="Löschen" style={{ background: 'transparent', border: '1px solid #f8717130', borderRadius: 7, color: '#f87171', padding: '5px 7px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Trash2 size={14} /></button>
-                  </div>
-                );
-              })}
+  const load = () => fetch('/api/profile')
+    .then(r => (r.ok ? r.json() : null))
+    .then(p => { setProfile(p); if (p?.bodyWeight != null) setBw(String(p.bodyWeight)); })
+    .catch(e => console.error('[profile] load failed:', e));
+  useEffect(() => { load(); }, []);
+
+  const saveBw = async () => {
+    if (bw === '' || Number.isNaN(Number(bw))) return;
+    setSaving(true); setMsg(null);
+    try {
+      const r = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bodyWeight: Number(bw) }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+      await load();
+      setMsg('Gespeichert');
+    } catch (e) { setMsg('Fehler: ' + e.message); } finally { setSaving(false); }
+  };
+
+  const resetAll = async () => {
+    if (!window.confirm('ALLES zurücksetzen? Alle Sessions und Gewichte werden gelöscht. Kann nicht rückgängig gemacht werden.')) return;
+    setMsg(null);
+    try {
+      const r1 = await fetch('/api/sessions?all=true', { method: 'DELETE' });
+      if (!r1.ok) throw new Error((await r1.json().catch(() => ({}))).error || `HTTP ${r1.status}`);
+      const r2 = await fetch('/api/profile', { method: 'DELETE' });
+      if (!r2.ok) throw new Error((await r2.json().catch(() => ({}))).error || `HTTP ${r2.status}`);
+      await load(); setBw('');
+      setMsg('Alles zurückgesetzt.');
+    } catch (e) { setMsg('Fehler: ' + e.message); }
+  };
+
+  const working = profile?.workingWeights || {};
+  const history = (profile?.bodyHistory || []).slice(-10).reverse();
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 60 }}>
+      <div style={{ background: '#0d0d0d', borderBottom: '1px solid #ffffff08', padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8, color: '#888', padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}><ArrowLeft size={15} /> Zurück</button>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><User size={20} /> Profil</h1>
+      </div>
+
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
+        <div style={{ background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '16px', marginBottom: 16 }}>
+          <p style={{ fontSize: 10, color: '#6366f1', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 12px' }}>Körpergewicht</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <input type="number" inputMode="decimal" min="0" step="0.1" value={bw} onChange={e => setBw(e.target.value)} placeholder="z.B. 140"
+              style={{ width: 120, background: '#00000040', border: '1px solid #6366f140', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 15, outline: 'none' }} />
+            <span style={{ color: '#666', fontSize: 13 }}>kg</span>
+            <button onClick={saveBw} disabled={saving} style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>{saving ? '…' : 'Speichern'}</button>
+          </div>
+          {msg && <div style={{ fontSize: 12, color: String(msg).startsWith('Fehler') ? '#f87171' : '#22c55e', marginTop: 10 }}>{msg}</div>}
+          {history.length > 0 && (
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {history.map((h, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#888', borderTop: i ? '1px solid #ffffff06' : 'none', paddingTop: i ? 5 : 0 }}>
+                  <span>{new Date(h.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                  <span style={{ color: '#ccc', fontWeight: 600 }}>{h.weight} kg</span>
+                </div>
+              ))}
             </div>
           )}
+        </div>
 
-          <button onClick={deleteAll} disabled={allForDelete.length === 0} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: allForDelete.length === 0 ? '#2a1a1a' : '#f87171', color: allForDelete.length === 0 ? '#666' : '#1a0808', border: 'none', borderRadius: 9, padding: '11px 16px', fontSize: 13, fontWeight: 800, cursor: allForDelete.length === 0 ? 'not-allowed' : 'pointer' }}><Trash2 size={15} /> Alle Sessions löschen</button>
+        <div style={{ background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '16px', marginBottom: 16 }}>
+          <p style={{ fontSize: 10, color: '#6366f1', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 12px' }}>Arbeitsgewichte</p>
+          {Object.values(DAYS).map(d => {
+            const exs = d.exercises.filter(ex => working[ex.id]);
+            if (!exs.length) return null;
+            return (
+              <div key={d.id} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: d.accent, marginBottom: 6 }}><DayIcon name={d.icon} size={14} /> {d.label}</div>
+                {exs.map(ex => (
+                  <div key={ex.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#aaa', padding: '4px 0' }}>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</span>
+                    <span style={{ color: '#fff', fontWeight: 700, marginLeft: 10 }}>{working[ex.id]} kg</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          {!Object.keys(working).length && <p style={{ color: '#555', fontSize: 13, margin: 0 }}>Noch keine Gewichte — trag im Training dein Gewicht ein.</p>}
+        </div>
+
+        <div style={{ border: '1px solid #f8717140', borderRadius: 12, padding: '16px', background: '#160e10' }}>
+          <p style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: '#f87171', letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 6px' }}><AlertTriangle size={14} /> Danger Zone</p>
+          <p style={{ color: '#6b6890', fontSize: 12, margin: '0 0 14px' }}>Setzt alle Sessions und Gewichte zurück. Kann nicht rückgängig gemacht werden.</p>
+          <button onClick={resetAll} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#f87171', color: '#1a0808', border: 'none', borderRadius: 9, padding: '11px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}><Trash2 size={15} /> Alles zurücksetzen</button>
         </div>
       </div>
     </div>
@@ -372,6 +467,8 @@ export default function TrainingApp() {
   const [view, setView] = useState('overview'); // 'overview' | 'training' | 'stats'
   const [activeDay, setActiveDay] = useState('brust');
   const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {} });
+  const [allWeights, setAllWeights] = useState({ brust: {}, ruecken: {}, beine: {} });
+  const [profileWeights, setProfileWeights] = useState({}); // last working weight per exercise
   const [timer, setTimer] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -393,21 +490,38 @@ export default function TrainingApp() {
     if (status !== "loading" && !session && typeof window !== "undefined") window.location.href = "/login";
   }, [status, session]);
 
-  // Restore any in-progress (active) sessions from the server so a workout
-  // can be resumed after reload or on another device.
+  // Restore in-progress sessions + per-exercise working weights so a workout
+  // can be resumed and weights are pre-filled with your progress.
   useEffect(() => {
     if (status !== 'authenticated') return;
-    fetch('/api/sessions?status=active')
-      .then(r => (r.ok ? r.json() : []))
-      .then(active => {
-        if (!Array.isArray(active) || !active.length) return;
-        setAllSets(prev => {
-          const next = { ...prev };
-          active.forEach(s => { if (next[s.day] !== undefined && s.completedSets) next[s.day] = s.completedSets; });
-          return next;
-        });
-      })
-      .catch(err => console.error('[hydrate active] failed:', err));
+    (async () => {
+      // 1) base weight defaults from the exercise data
+      const baseW = {};
+      Object.values(DAYS).forEach(d => { baseW[d.id] = {}; d.exercises.forEach(ex => { baseW[d.id][ex.id] = parseWeight(ex.weight); }); });
+      // 2) profile working weights (your progressed targets)
+      let working = {};
+      try {
+        const r = await fetch('/api/profile');
+        if (r.ok) { const p = await r.json(); working = p?.workingWeights || {}; }
+      } catch (err) { console.error('[hydrate profile] failed:', err); }
+      setProfileWeights(working);
+      Object.values(DAYS).forEach(d => d.exercises.forEach(ex => { if (working[ex.id] != null) baseW[d.id][ex.id] = working[ex.id]; }));
+      // 3) active sessions: restore completed sets + weights actually entered
+      const setsByDay = {};
+      try {
+        const r = await fetch('/api/sessions?status=active');
+        if (r.ok) {
+          const active = await r.json();
+          if (Array.isArray(active)) active.forEach(s => {
+            if (!DAYS[s.day]) return;
+            if (s.completedSets) setsByDay[s.day] = s.completedSets;
+            if (s.weights) Object.assign(baseW[s.day], s.weights);
+          });
+        }
+      } catch (err) { console.error('[hydrate active] failed:', err); }
+      setAllWeights(baseW);
+      if (Object.keys(setsByDay).length) setAllSets(prev => ({ ...prev, ...setsByDay }));
+    })();
   }, [status]);
 
   if (status === "loading") return <div style={{ minHeight: "100vh", background: "#0c0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b6890", fontFamily: "Inter, sans-serif" }}>Laden…</div>;
@@ -415,7 +529,7 @@ export default function TrainingApp() {
 
   // Persist the in-progress session (fire-and-forget) so it is stored the
   // moment it starts and after every set — enabling resume.
-  const persistActive = (dayId, sets) => {
+  const persistActive = (dayId, sets, weights) => {
     const dayObj = DAYS[dayId];
     const total = dayObj.exercises.reduce((a, e) => a + e.sets, 0);
     const done = Object.values(sets).filter(Boolean).length;
@@ -423,7 +537,7 @@ export default function TrainingApp() {
     fetch('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ day: dayId, exercises: dayObj.exercises.map(e => e.name), totalSets: total, doneSets: done, completedSets: sets, status: 'active' }),
+      body: JSON.stringify({ day: dayId, exercises: dayObj.exercises.map(e => e.name), totalSets: total, doneSets: done, completedSets: sets, weights: weights || {}, status: 'active' }),
     })
       .then(async r => {
         if (!r.ok) {
@@ -441,29 +555,49 @@ export default function TrainingApp() {
     const updated = { ...completedSets, [key]: !already };
     setAllSets(prev => ({ ...prev, [activeDay]: updated }));
     if (!already) setTimer({ seconds: rest, accent: day.accent });
-    persistActive(activeDay, updated);
+    persistActive(activeDay, updated, allWeights[activeDay]);
   };
 
   const skip = (exId, si) => {
     const key = `${exId}-${si}`;
     const updated = { ...completedSets, [key]: true };
     setAllSets(prev => ({ ...prev, [activeDay]: updated }));
-    persistActive(activeDay, updated);
+    persistActive(activeDay, updated, allWeights[activeDay]);
+  };
+
+  const setWeight = (exId, val) => {
+    const updated = { ...(allWeights[activeDay] || {}), [exId]: val };
+    setAllWeights(prev => ({ ...prev, [activeDay]: updated }));
+    persistActive(activeDay, completedSets, updated);
   };
 
   const saveSession = async () => {
     setSaving(true);
     setSaveError(null);
     const duration = startTime ? Math.round((Date.now() - startTime) / 60000) : null;
+    const usedWeights = allWeights[activeDay] || {};
+    // Progress each completed exercise: next working weight = used + step.
+    const nextWorking = {};
+    day.exercises.forEach(ex => {
+      const w = Number(usedWeights[ex.id]) || 0;
+      if (w > 0) nextWorking[ex.id] = w + stepFor(ex);
+    });
     try {
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ day: activeDay, exercises: day.exercises.map(e => e.name), totalSets, doneSets, completedSets, durationMinutes: duration, status: 'completed' }),
+        body: JSON.stringify({ day: activeDay, exercises: day.exercises.map(e => e.name), totalSets, doneSets, completedSets, weights: usedWeights, durationMinutes: duration, status: 'completed' }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `Speichern fehlgeschlagen (HTTP ${res.status})`);
+      }
+      // Store progressed targets in the profile for next time (best-effort).
+      if (Object.keys(nextWorking).length) {
+        fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workingWeights: nextWorking }) })
+          .catch(err => console.error('[profile update] failed:', err));
+        setProfileWeights(prev => ({ ...prev, ...nextWorking }));
+        setAllWeights(prev => ({ ...prev, [activeDay]: { ...prev[activeDay], ...nextWorking } }));
       }
       setAllSets(prev => ({ ...prev, [activeDay]: {} }));
       setStartTime(null);
@@ -476,11 +610,25 @@ export default function TrainingApp() {
     }
   };
 
+  const deleteCurrentSession = async () => {
+    if (!window.confirm('Diese Session löschen?')) return;
+    try {
+      const r = await fetch(`/api/sessions?day=${activeDay}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+      setAllSets(prev => ({ ...prev, [activeDay]: {} }));
+      setStartTime(null);
+      setView('overview');
+    } catch (e) { setSaveError('Löschen fehlgeschlagen: ' + e.message); }
+  };
+
   if (view === 'overview') return <OverviewView
     onNew={() => setView('select')}
     onResume={(d, sets) => { setAllSets(prev => ({ ...prev, [d]: sets || {} })); setActiveDay(d); setView('training'); }}
     onStats={() => setView('stats')}
+    onProfile={() => setView('profile')}
   />;
+
+  if (view === 'profile') return <ProfileView onBack={() => setView('overview')} />;
 
   if (view === 'select') return (
     <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', padding: '28px 16px' }}>
@@ -490,7 +638,7 @@ export default function TrainingApp() {
         <p style={{ color: '#6b6890', fontSize: 14, margin: '0 0 22px' }}>Womit startest du heute?</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {Object.values(DAYS).map(d => (
-            <button key={d.id} onClick={() => { setActiveDay(d.id); persistActive(d.id, allSets[d.id] || {}); setView('training'); }}
+            <button key={d.id} onClick={() => { setActiveDay(d.id); persistActive(d.id, allSets[d.id] || {}, allWeights[d.id] || {}); setView('training'); }}
               style={{ display: 'flex', alignItems: 'center', gap: 14, background: d.accent + '12', border: `1px solid ${d.accent}40`, borderRadius: 14, padding: '18px 16px', cursor: 'pointer', textAlign: 'left' }}>
               <div style={{ width: 46, height: 46, borderRadius: 12, flexShrink: 0, background: d.accent + '20', border: `1px solid ${d.accent}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: d.accent }}><DayIcon name={d.icon} size={24} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -544,7 +692,7 @@ export default function TrainingApp() {
               <h1 style={{ fontSize: 24, fontWeight: 800, margin: '4px 0 0', letterSpacing: -0.5, display: 'flex', alignItems: 'center', gap: 9 }}><DayIcon name={day.icon} size={24} color={day.accent} /> {day.label} Tag</h1>
             </div>
             {doneSets > 0 && !finished && (
-              <button onClick={() => { setAllSets(prev => ({ ...prev, [activeDay]: {} })); persistActive(activeDay, {}); }} style={{ background: 'none', border: '1px solid #ffffff15', borderRadius: 8, color: '#555', fontSize: 11, padding: '6px 10px', cursor: 'pointer' }}>Reset</button>
+              <button onClick={() => { setAllSets(prev => ({ ...prev, [activeDay]: {} })); persistActive(activeDay, {}, allWeights[activeDay]); }} style={{ background: 'none', border: '1px solid #ffffff15', borderRadius: 8, color: '#555', fontSize: 11, padding: '6px 10px', cursor: 'pointer' }}>Reset</button>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
@@ -567,7 +715,7 @@ export default function TrainingApp() {
       {/* Exercises */}
       <div style={{ maxWidth: 600, margin: '14px auto 0', padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {day.exercises.map(ex => (
-          <ExerciseCard key={ex.id} ex={ex} accent={day.accent} accentDim={day.accentDim} bgCard={day.bg === '#0c0a14' ? '#13111a' : day.bg === '#080c12' ? '#0d1117' : '#110e00'} completedSets={completedSets} onToggle={toggle} onSkip={skip} />
+          <ExerciseCard key={ex.id} ex={ex} accent={day.accent} accentDim={day.accentDim} bgCard={day.bg === '#0c0a14' ? '#13111a' : day.bg === '#080c12' ? '#0d1117' : '#110e00'} completedSets={completedSets} onToggle={toggle} onSkip={skip} weight={(allWeights[activeDay] || {})[ex.id] ?? ''} onWeight={setWeight} prevWeight={profileWeights[ex.id]} />
         ))}
 
         {finished && (
@@ -592,6 +740,11 @@ export default function TrainingApp() {
               <p style={{ fontSize: 11, color: '#555', margin: 0, lineHeight: 1.65 }}>{note}</p>
             </div>
           ))}
+        </div>
+
+        <div style={{ border: '1px solid #f8717130', borderRadius: 14, padding: '14px', marginTop: 10, background: '#160e10' }}>
+          <p style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10, color: '#f87171', letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 10px' }}><AlertTriangle size={13} /> Danger Zone</p>
+          <button onClick={deleteCurrentSession} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', color: '#f87171', border: '1px solid #f8717140', borderRadius: 9, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}><Trash2 size={15} /> Diese Session löschen</button>
         </div>
       </div>
     </div>

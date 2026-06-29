@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      const { id, all } = req.query;
+      const { id, all, day } = req.query;
       if (all === 'true') {
         const r = await col.deleteMany({ userId });
         return res.status(200).json({ ok: true, deleted: r.deletedCount });
@@ -66,7 +66,12 @@ export default async function handler(req, res) {
         await col.deleteOne({ userId, _id });
         return res.status(200).json({ ok: true });
       }
-      return res.status(400).json({ error: 'id oder all=true erforderlich' });
+      if (day) {
+        // delete the in-progress session for this day
+        const r = await col.deleteOne({ userId, day, status: 'active' });
+        return res.status(200).json({ ok: true, deleted: r.deletedCount });
+      }
+      return res.status(400).json({ error: 'id, day oder all=true erforderlich' });
     }
 
     return res.status(405).end();
