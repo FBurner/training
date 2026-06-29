@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
-  CalendarCheck, Layers, Plus, Clock, Home, Play,
+  CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints };
@@ -246,6 +246,27 @@ function OverviewView({ onNew, onResume, onStats }) {
       .catch(err => { console.error('[overview] load sessions failed:', err); setLoading(false); });
   }, []);
 
+  const deleteOne = async (id) => {
+    if (!id || !window.confirm('Diese Session wirklich löschen?')) return;
+    try {
+      const r = await fetch(`/api/sessions?id=${id}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+      setSessions(s => s.filter(x => String(x._id) !== String(id)));
+      setActive(a => a.filter(x => String(x._id) !== String(id)));
+    } catch (e) { alert('Löschen fehlgeschlagen: ' + e.message); }
+  };
+
+  const deleteAll = async () => {
+    if (!window.confirm('ALLE Sessions löschen? Das kann nicht rückgängig gemacht werden.')) return;
+    try {
+      const r = await fetch('/api/sessions?all=true', { method: 'DELETE' });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+      setSessions([]); setActive([]);
+    } catch (e) { alert('Löschen fehlgeschlagen: ' + e.message); }
+  };
+
+  const allForDelete = [...active, ...sessions];
+
   return (
     <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 60 }}>
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '28px 16px 0' }}>
@@ -317,6 +338,30 @@ function OverviewView({ onNew, onResume, onStats }) {
             })}
           </div>
         )}
+
+        <div style={{ marginTop: 34, border: '1px solid #f8717140', borderRadius: 12, padding: '16px', background: '#160e10' }}>
+          <p style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: '#f87171', letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 6px' }}><AlertTriangle size={14} /> Danger Zone</p>
+          <p style={{ color: '#6b6890', fontSize: 12, margin: '0 0 14px' }}>Sessions löschen — kann nicht rückgängig gemacht werden.</p>
+
+          {allForDelete.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {allForDelete.map((s, i) => {
+                const d = DAYS[s.day];
+                return (
+                  <div key={s._id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#00000030', borderRadius: 8, padding: '8px 10px' }}>
+                    <span style={{ display: 'flex', color: d?.accent || '#888' }}><DayIcon name={d?.icon} size={15} /></span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: '#aaa' }}>
+                      {d?.label || s.day}{s.status === 'active' ? ' · läuft' : ''} · {new Date(s.completedAt || s.startedAt || s.updatedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </span>
+                    <button onClick={() => deleteOne(s._id)} title="Löschen" style={{ background: 'transparent', border: '1px solid #f8717130', borderRadius: 7, color: '#f87171', padding: '5px 7px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><Trash2 size={14} /></button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button onClick={deleteAll} disabled={allForDelete.length === 0} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: allForDelete.length === 0 ? '#2a1a1a' : '#f87171', color: allForDelete.length === 0 ? '#666' : '#1a0808', border: 'none', borderRadius: 9, padding: '11px 16px', fontSize: 13, fontWeight: 800, cursor: allForDelete.length === 0 ? 'not-allowed' : 'pointer' }}><Trash2 size={15} /> Alle Sessions löschen</button>
+        </div>
       </div>
     </div>
   );
@@ -432,10 +477,33 @@ export default function TrainingApp() {
   };
 
   if (view === 'overview') return <OverviewView
-    onNew={() => { persistActive(activeDay, allSets[activeDay] || {}); setView('training'); }}
+    onNew={() => setView('select')}
     onResume={(d, sets) => { setAllSets(prev => ({ ...prev, [d]: sets || {} })); setActiveDay(d); setView('training'); }}
     onStats={() => setView('stats')}
   />;
+
+  if (view === 'select') return (
+    <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', padding: '28px 16px' }}>
+      <div style={{ maxWidth: 600, margin: '0 auto' }}>
+        <button onClick={() => setView('overview')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8, color: '#888', padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}><ArrowLeft size={15} /> Zurück</button>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: '18px 0 6px' }}>Tag wählen</h1>
+        <p style={{ color: '#6b6890', fontSize: 14, margin: '0 0 22px' }}>Womit startest du heute?</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {Object.values(DAYS).map(d => (
+            <button key={d.id} onClick={() => { setActiveDay(d.id); persistActive(d.id, allSets[d.id] || {}); setView('training'); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, background: d.accent + '12', border: `1px solid ${d.accent}40`, borderRadius: 14, padding: '18px 16px', cursor: 'pointer', textAlign: 'left' }}>
+              <div style={{ width: 46, height: 46, borderRadius: 12, flexShrink: 0, background: d.accent + '20', border: `1px solid ${d.accent}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: d.accent }}><DayIcon name={d.icon} size={24} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 17, fontWeight: 800 }}>{d.label}</div>
+                <div style={{ fontSize: 12, color: '#6b6890', marginTop: 2 }}>{d.tag} · {d.duration}</div>
+              </div>
+              <span style={{ color: d.accent, display: 'flex' }}><Play size={20} /></span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
   if (view === 'stats') return <StatsView onBack={() => setView('overview')} />;
 
   return (

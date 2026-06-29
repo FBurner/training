@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth';
+import { ObjectId } from 'mongodb';
 import { authOptions } from './auth/[...nextauth]';
 import clientPromise from '../../lib/mongodb';
 
@@ -51,6 +52,21 @@ export default async function handler(req, res) {
       const sessions = await col.find({ userId, status: { $ne: 'active' }, ...(day ? { day } : {}) })
         .sort({ completedAt: -1 }).limit(parseInt(limit)).toArray();
       return res.status(200).json(sessions);
+    }
+
+    if (req.method === 'DELETE') {
+      const { id, all } = req.query;
+      if (all === 'true') {
+        const r = await col.deleteMany({ userId });
+        return res.status(200).json({ ok: true, deleted: r.deletedCount });
+      }
+      if (id) {
+        let _id;
+        try { _id = new ObjectId(String(id)); } catch { return res.status(400).json({ error: 'ungültige id' }); }
+        await col.deleteOne({ userId, _id });
+        return res.status(200).json({ ok: true });
+      }
+      return res.status(400).json({ error: 'id oder all=true erforderlich' });
     }
 
     return res.status(405).end();
