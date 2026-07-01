@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { DAYS } from '../lib/data';
+import ExerciseFigure from '../components/ExerciseFigure';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
-  TrendingUp, User, Weight,
+  TrendingUp, User, Weight, Info, X,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints, kettlebell: Weight };
@@ -26,14 +27,21 @@ function parseWeight(str) {
 // Progressive-overload step: bigger jump for primary compound lifts.
 function stepFor(ex) { return ex.primary ? 5 : 2.5; }
 
-function RestTimer({ seconds, accent, onClose }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const ref = useRef();
+function RestTimer({ seconds, accent, startedAt, onClose }) {
+  // Timestamp-based: remaining is derived from wall-clock, so backgrounding
+  // the tab (which suspends timers/intervals) never freezes the countdown —
+  // when you come back it shows the correct time (or "done").
+  const endAt = (startedAt || Date.now()) + seconds * 1000;
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    ref.current = setInterval(() => setRemaining(r => r <= 1 ? (clearInterval(ref.current), 0) : r - 1), 1000);
-    return () => clearInterval(ref.current);
+    const tick = () => setNow(Date.now());
+    const iv = setInterval(tick, 250);
+    document.addEventListener('visibilitychange', tick);
+    window.addEventListener('focus', tick);
+    return () => { clearInterval(iv); document.removeEventListener('visibilitychange', tick); window.removeEventListener('focus', tick); };
   }, []);
-  const pct = ((seconds - remaining) / seconds) * 100;
+  const remaining = Math.max(0, Math.ceil((endAt - now) / 1000));
+  const pct = Math.min(100, ((seconds - remaining) / seconds) * 100);
   const done = remaining === 0;
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)' }}>
@@ -61,6 +69,7 @@ function RestTimer({ seconds, accent, onClose }) {
 
 function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, onSkip, weight, onWeight, prevWeight }) {
   const [open, setOpen] = useState(false);
+  const [info, setInfo] = useState(false);
   const states = Array.from({ length: ex.sets }, (_, i) => !!completedSets[`${ex.id}-${i}`]);
   const done = states.filter(Boolean).length;
   const allDone = done === ex.sets;
@@ -86,8 +95,37 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
         <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
           {states.map((d, i) => <div key={i} style={{ width: 5, height: 5, borderRadius: 99, background: d ? accent : '#2a2a2a' }} />)}
         </div>
+        <span role="button" tabIndex={0} title="Info & Illustration" onClick={e => { e.stopPropagation(); setInfo(true); }}
+          style={{ display: 'flex', color: accent, opacity: 0.75, marginLeft: 2, cursor: 'pointer' }}>
+          <Info size={16} />
+        </span>
         <span style={{ color: '#333', marginLeft: 4, display: 'flex' }}>{open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</span>
       </button>
+
+      {info && (
+        <div onClick={() => setInfo(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#0d0d0f', border: `1px solid ${accent}40`, borderRadius: 18, padding: 22, maxWidth: 380, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{ex.name}</div>
+                <div style={{ fontSize: 12, color: '#6b6890', marginTop: 2 }}>{ex.sub}</div>
+              </div>
+              <button onClick={() => setInfo(false)} style={{ background: '#1a1a1a', border: '1px solid #ffffff12', borderRadius: 8, color: '#888', padding: 6, cursor: 'pointer', display: 'flex', flexShrink: 0 }}><X size={16} /></button>
+            </div>
+            <div style={{ background: '#00000040', border: '1px solid #ffffff08', borderRadius: 12, padding: '14px', margin: '10px 0 14px', display: 'flex', justifyContent: 'center' }}>
+              <ExerciseFigure exId={ex.id} color={accent} size={210} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+              <span style={{ fontSize: 11, background: accent + '18', color: accent, padding: '3px 9px', borderRadius: 6, fontWeight: 700 }}>{ex.focus}</span>
+              <span style={{ fontSize: 11, background: '#ffffff08', color: '#aaa', padding: '3px 9px', borderRadius: 6, fontWeight: 600 }}>{ex.sets} × {ex.reps}</span>
+              <span style={{ fontSize: 11, background: '#ffffff08', color: '#aaa', padding: '3px 9px', borderRadius: 6, fontWeight: 600 }}>{ex.weight}</span>
+              {ex.posture && <span style={{ fontSize: 11, background: '#10b98115', color: '#10b981', padding: '3px 9px', borderRadius: 6, fontWeight: 700 }}>HALTUNG</span>}
+            </div>
+            <p style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.65, margin: 0 }}>{ex.tip}</p>
+            <p style={{ fontSize: 11, color: '#555', margin: '12px 0 0', lineHeight: 1.5 }}>Schematische Darstellung der Bewegung.</p>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div style={{ padding: '0 16px 16px', borderTop: '1px solid #ffffff06' }}>
@@ -470,6 +508,7 @@ export default function TrainingApp() {
   const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {} });
   const [allWeights, setAllWeights] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {} });
   const [profileWeights, setProfileWeights] = useState({}); // last working weight per exercise
+  const [lastDoneByDay, setLastDoneByDay] = useState({}); // day -> last completedAt (ms)
   const [timer, setTimer] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -522,8 +561,28 @@ export default function TrainingApp() {
       } catch (err) { console.error('[hydrate active] failed:', err); }
       setAllWeights(baseW);
       if (Object.keys(setsByDay).length) setAllSets(prev => ({ ...prev, ...setsByDay }));
+      // 4) completed sessions -> last-done per day (for the rest-day cooldown)
+      try {
+        const r = await fetch('/api/sessions?limit=60');
+        if (r.ok) {
+          const done = await r.json();
+          const last = {};
+          if (Array.isArray(done)) done.forEach(s => {
+            const t = new Date(s.completedAt).getTime();
+            if (!Number.isNaN(t) && (!last[s.day] || t > last[s.day])) last[s.day] = t;
+          });
+          setLastDoneByDay(last);
+        }
+      } catch (err) { console.error('[hydrate history] failed:', err); }
     })();
   }, [status]);
+
+  const REST_DAYS = 6;
+  const cooldownFor = (dayId) => {
+    const last = lastDoneByDay[dayId];
+    if (!last) return 0;
+    return Math.max(0, Math.ceil(REST_DAYS - (Date.now() - last) / 86400000));
+  };
 
   if (status === "loading") return <div style={{ minHeight: "100vh", background: "#0c0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b6890", fontFamily: "Inter, sans-serif" }}>Laden…</div>;
   if (!session) return null;
@@ -555,7 +614,7 @@ export default function TrainingApp() {
     const already = completedSets[key];
     const updated = { ...completedSets, [key]: !already };
     setAllSets(prev => ({ ...prev, [activeDay]: updated }));
-    if (!already) setTimer({ seconds: rest, accent: day.accent });
+    if (!already) setTimer({ seconds: rest, accent: day.accent, startedAt: Date.now() });
     persistActive(activeDay, updated, allWeights[activeDay]);
   };
 
@@ -600,6 +659,7 @@ export default function TrainingApp() {
         setProfileWeights(prev => ({ ...prev, ...nextWorking }));
         setAllWeights(prev => ({ ...prev, [activeDay]: { ...prev[activeDay], ...nextWorking } }));
       }
+      setLastDoneByDay(prev => ({ ...prev, [activeDay]: Date.now() }));
       setAllSets(prev => ({ ...prev, [activeDay]: {} }));
       setStartTime(null);
       setView('overview');
@@ -637,18 +697,26 @@ export default function TrainingApp() {
         <button onClick={() => setView('overview')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8, color: '#888', padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}><ArrowLeft size={15} /> Zurück</button>
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: '18px 0 6px' }}>Tag wählen</h1>
         <p style={{ color: '#6b6890', fontSize: 14, margin: '0 0 22px' }}>Womit startest du heute?</p>
+        <p style={{ color: '#555', fontSize: 12, margin: '-14px 0 18px' }}>Nach jeder Einheit: {REST_DAYS} Tage Pause für diesen Tag.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {Object.values(DAYS).map(d => (
-            <button key={d.id} onClick={() => { setActiveDay(d.id); persistActive(d.id, allSets[d.id] || {}, allWeights[d.id] || {}); setView('training'); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, background: d.accent + '12', border: `1px solid ${d.accent}40`, borderRadius: 14, padding: '18px 16px', cursor: 'pointer', textAlign: 'left' }}>
-              <div style={{ width: 46, height: 46, borderRadius: 12, flexShrink: 0, background: d.accent + '20', border: `1px solid ${d.accent}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: d.accent }}><DayIcon name={d.icon} size={24} /></div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 17, fontWeight: 800 }}>{d.label}</div>
-                <div style={{ fontSize: 12, color: '#6b6890', marginTop: 2 }}>{d.tag} · {d.duration}</div>
-              </div>
-              <span style={{ color: d.accent, display: 'flex' }}><Play size={20} /></span>
-            </button>
-          ))}
+          {Object.values(DAYS).map(d => {
+            const cd = cooldownFor(d.id);
+            const locked = cd > 0;
+            return (
+              <button key={d.id} disabled={locked}
+                onClick={() => { if (locked) return; setActiveDay(d.id); persistActive(d.id, allSets[d.id] || {}, allWeights[d.id] || {}); setView('training'); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, background: locked ? '#111' : d.accent + '12', border: `1px solid ${locked ? '#ffffff10' : d.accent + '40'}`, borderRadius: 14, padding: '18px 16px', cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'left', opacity: locked ? 0.55 : 1 }}>
+                <div style={{ width: 46, height: 46, borderRadius: 12, flexShrink: 0, background: (locked ? '#888' : d.accent) + '20', border: `1px solid ${(locked ? '#888' : d.accent)}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: locked ? '#888' : d.accent }}><DayIcon name={d.icon} size={24} /></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: locked ? '#888' : '#fff' }}>{d.label}</div>
+                  <div style={{ fontSize: 12, color: locked ? '#f59e0b' : '#6b6890', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {locked ? <><Clock size={12} /> Erst in {cd} {cd === 1 ? 'Tag' : 'Tagen'} wieder</> : `${d.tag} · ${d.duration}`}
+                  </div>
+                </div>
+                <span style={{ color: locked ? '#555' : d.accent, display: 'flex' }}>{locked ? <Clock size={20} /> : <Play size={20} />}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -657,7 +725,7 @@ export default function TrainingApp() {
 
   return (
     <div style={{ minHeight: '100vh', background: day.bg, fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', transition: 'background 0.3s', paddingBottom: 60 }}>
-      {timer && <RestTimer seconds={timer.seconds} accent={timer.accent} onClose={() => setTimer(null)} />}
+      {timer && <RestTimer seconds={timer.seconds} accent={timer.accent} startedAt={timer.startedAt} onClose={() => setTimer(null)} />}
 
       {/* Nav */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: day.bg + 'ee', backdropFilter: 'blur(10px)', borderBottom: '1px solid #ffffff08', padding: '10px 14px' }}>
