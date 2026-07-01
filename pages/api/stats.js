@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     else break;
   }
 
-  const volumeByDay = { brust: [], ruecken: [], beine: [] };
+  const volumeByDay = { brust: [], ruecken: [], beine: [], kettlebell: [] };
   sessions.forEach(s => {
     if (volumeByDay[s.day]) volumeByDay[s.day].push({
       date: new Date(s.completedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),

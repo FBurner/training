@@ -6,10 +6,10 @@ import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
-  TrendingUp, User,
+  TrendingUp, User, Weight,
 } from 'lucide-react';
 
-const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints };
+const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints, kettlebell: Weight };
 
 function DayIcon({ name, ...props }) {
   const Icon = DAY_ICONS[name] || Dumbbell;
@@ -177,7 +177,7 @@ function StatsView({ onBack }) {
     day: s.day,
   }));
 
-  const dayCount = { brust: 0, ruecken: 0, beine: 0 };
+  const dayCount = { brust: 0, ruecken: 0, beine: 0, kettlebell: 0 };
   history.forEach(s => { if (dayCount[s.day] !== undefined) dayCount[s.day]++; });
 
   return (
@@ -206,13 +206,14 @@ function StatsView({ onBack }) {
         {/* Day distribution */}
         <div style={{ background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '16px', marginBottom: 16 }}>
           <p style={{ fontSize: 10, color: '#6366f1', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 14px' }}>Trainingstage</p>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {[
               { id: 'brust', label: 'Brust', icon: 'dumbbell', color: '#6366f1', count: dayCount.brust },
               { id: 'ruecken', label: 'Rücken', icon: 'back', color: '#0ea5e9', count: dayCount.ruecken },
               { id: 'beine', label: 'Beine', icon: 'legs', color: '#f59e0b', count: dayCount.beine },
+              { id: 'kettlebell', label: 'Kettlebell', icon: 'kettlebell', color: '#10b981', count: dayCount.kettlebell },
             ].map(d => (
-              <div key={d.id} style={{ flex: 1, background: d.color + '10', border: `1px solid ${d.color}25`, borderRadius: 10, padding: '12px 8px', textAlign: 'center' }}>
+              <div key={d.id} style={{ flex: '1 1 40%', background: d.color + '10', border: `1px solid ${d.color}25`, borderRadius: 10, padding: '12px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: d.color }}>{d.count}</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 10, color: '#555', marginTop: 3 }}><DayIcon name={d.icon} size={13} color={d.color} /> {d.label}</div>
               </div>
@@ -466,8 +467,8 @@ export default function TrainingApp() {
   const { data: session, status } = useSession();
   const [view, setView] = useState('overview'); // 'overview' | 'training' | 'stats'
   const [activeDay, setActiveDay] = useState('brust');
-  const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {} });
-  const [allWeights, setAllWeights] = useState({ brust: {}, ruecken: {}, beine: {} });
+  const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {} });
+  const [allWeights, setAllWeights] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {} });
   const [profileWeights, setProfileWeights] = useState({}); // last working weight per exercise
   const [timer, setTimer] = useState(null);
   const [startTime, setStartTime] = useState(null);
@@ -715,7 +716,7 @@ export default function TrainingApp() {
       {/* Exercises */}
       <div style={{ maxWidth: 600, margin: '14px auto 0', padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {day.exercises.map(ex => (
-          <ExerciseCard key={ex.id} ex={ex} accent={day.accent} accentDim={day.accentDim} bgCard={day.bg === '#0c0a14' ? '#13111a' : day.bg === '#080c12' ? '#0d1117' : '#110e00'} completedSets={completedSets} onToggle={toggle} onSkip={skip} weight={(allWeights[activeDay] || {})[ex.id] ?? ''} onWeight={setWeight} prevWeight={profileWeights[ex.id]} />
+          <ExerciseCard key={ex.id} ex={ex} accent={day.accent} accentDim={day.accentDim} bgCard={day.bg === '#0c0a14' ? '#13111a' : day.bg === '#080c12' ? '#0d1117' : day.bg === '#07120e' ? '#0c1a15' : '#110e00'} completedSets={completedSets} onToggle={toggle} onSkip={skip} weight={(allWeights[activeDay] || {})[ex.id] ?? ''} onWeight={setWeight} prevWeight={profileWeights[ex.id]} />
         ))}
 
         {finished && (
