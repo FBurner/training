@@ -27,6 +27,16 @@ function parseWeight(str) {
 // Progressive-overload step: bigger jump for primary compound lifts.
 function stepFor(ex) { return ex.primary ? 5 : 2.5; }
 
+// Forced rest between repeats of the same day.
+const REST_DAYS = 6;
+function restDaysLeft(lastMs) {
+  if (!lastMs) return 0;
+  return Math.max(0, Math.ceil(REST_DAYS - (Date.now() - lastMs) / 86400000));
+}
+function fmtDate(ms) {
+  return new Date(ms).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+}
+
 function RestTimer({ seconds, accent, startedAt, onClose }) {
   // Timestamp-based: remaining is derived from wall-clock, so backgrounding
   // the tab (which suspends timers/intervals) never freezes the countdown —
@@ -323,6 +333,12 @@ function OverviewView({ onNew, onResume, onStats, onProfile }) {
       .catch(err => { console.error('[overview] load sessions failed:', err); setLoading(false); });
   }, []);
 
+  // last completed date per day -> rest-day timeline
+  const lastByDay = {};
+  sessions.forEach(s => {
+    const t = new Date(s.completedAt).getTime();
+    if (!Number.isNaN(t) && (!lastByDay[s.day] || t > lastByDay[s.day])) lastByDay[s.day] = t;
+  });
 
   return (
     <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 60 }}>
@@ -339,6 +355,39 @@ function OverviewView({ onNew, onResume, onStats, onProfile }) {
         <button onClick={onNew} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '16px', fontSize: 16, fontWeight: 800, cursor: 'pointer', marginBottom: 28 }}>
           <Plus size={20} /> Neue Session starten
         </button>
+
+        <div style={{ marginBottom: 28 }}>
+          <p style={{ fontSize: 10, color: '#6366f1', letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 12px' }}>Timeline · Trainingsplan</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Object.values(DAYS).map(d => {
+              const last = lastByDay[d.id];
+              const left = restDaysLeft(last);
+              const ready = left === 0;
+              const nextMs = last ? last + REST_DAYS * 86400000 : null;
+              return (
+                <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#0d0d0d', border: `1px solid ${ready ? d.accent + '30' : '#ffffff08'}`, borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: (ready ? d.accent : '#666') + '18', border: `1px solid ${(ready ? d.accent : '#666')}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ready ? d.accent : '#888' }}>
+                    <DayIcon name={d.icon} size={17} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{d.label}</div>
+                    <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>{last ? `zuletzt ${fmtDate(last)}` : 'noch nie trainiert'}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    {ready ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#22c55e' }}><Play size={13} /> Bereit</span>
+                    ) : (
+                      <>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#f59e0b' }}><Clock size={13} /> Pause · {left} {left === 1 ? 'Tag' : 'Tage'}</span>
+                        <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>ab {fmtDate(nextMs)}</div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {active.length > 0 && (
           <div style={{ marginBottom: 28 }}>
@@ -577,12 +626,7 @@ export default function TrainingApp() {
     })();
   }, [status]);
 
-  const REST_DAYS = 6;
-  const cooldownFor = (dayId) => {
-    const last = lastDoneByDay[dayId];
-    if (!last) return 0;
-    return Math.max(0, Math.ceil(REST_DAYS - (Date.now() - last) / 86400000));
-  };
+  const cooldownFor = (dayId) => restDaysLeft(lastDoneByDay[dayId]);
 
   if (status === "loading") return <div style={{ minHeight: "100vh", background: "#0c0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b6890", fontFamily: "Inter, sans-serif" }}>Laden…</div>;
   if (!session) return null;
