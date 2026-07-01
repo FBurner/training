@@ -15,6 +15,41 @@ const PATTERN = {
 
 export function patternFor(exId) { return PATTERN[exId] || 'press'; }
 
+// Real exercise photos from the open free-exercise-db (jsDelivr CDN).
+// Best-effort mapping; the info modal falls back to the SVG below if a
+// photo 404s, so a wrong/missing id never shows a broken image.
+const IMG = {
+  b1: 'Barbell_Incline_Bench_Press_-_Medium_Grip',
+  b2: 'Barbell_Bench_Press_-_Medium_Grip',
+  b3: 'Incline_Dumbbell_Press',
+  b4: 'Dumbbell_Flyes',
+  b5: 'Leverage_Chest_Press',
+  b6: 'Butterfly',
+  r1: 'Seated_Cable_Rows',
+  r2: 'Wide-Grip_Lat_Pulldown',
+  r3: 'Face_Pull',
+  r4: 'Bent_Over_One-Arm_Long_Bar_Row',
+  r5: 'Reverse_Machine_Flyes',
+  r6: 'Hyperextensions_(Back_Extensions)',
+  l1: 'Leg_Press',
+  l2: 'Leg_Extensions',
+  l3: 'Lying_Leg_Curls',
+  l4: 'Standing_Calf_Raises',
+  l5: 'Barbell_Hip_Thrust',
+  l6: 'Thigh_Abductor',
+  k1: 'One-Arm_Kettlebell_Swings',
+  k2: 'Goblet_Squat',
+  k3: 'Clean_and_Press',
+  k4: 'One-Arm_Kettlebell_Row',
+  k5: 'Kettlebell_One-Legged_Deadlift',
+  k6: "Farmer's_Walk",
+};
+
+export function imageUrlFor(exId) {
+  const id = IMG[exId];
+  return id ? `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/${id}/0.jpg` : null;
+}
+
 export default function ExerciseFigure({ exId, color = '#e5e7eb', size = 200 }) {
   const pattern = patternFor(exId);
   const body = '#cbd5e1';      // figure

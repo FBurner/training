@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { DAYS } from '../lib/data';
-import ExerciseFigure from '../components/ExerciseFigure';
+import ExerciseFigure, { imageUrlFor } from '../components/ExerciseFigure';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
@@ -80,6 +80,8 @@ function RestTimer({ seconds, accent, startedAt, onClose }) {
 function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, onSkip, weight, onWeight, prevWeight }) {
   const [open, setOpen] = useState(false);
   const [info, setInfo] = useState(false);
+  const [imgErr, setImgErr] = useState(false);
+  const photoUrl = imageUrlFor(ex.id);
   const states = Array.from({ length: ex.sets }, (_, i) => !!completedSets[`${ex.id}-${i}`]);
   const done = states.filter(Boolean).length;
   const allDone = done === ex.sets;
@@ -122,8 +124,12 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
               </div>
               <button onClick={() => setInfo(false)} style={{ background: '#1a1a1a', border: '1px solid #ffffff12', borderRadius: 8, color: '#888', padding: 6, cursor: 'pointer', display: 'flex', flexShrink: 0 }}><X size={16} /></button>
             </div>
-            <div style={{ background: '#00000040', border: '1px solid #ffffff08', borderRadius: 12, padding: '14px', margin: '10px 0 14px', display: 'flex', justifyContent: 'center' }}>
-              <ExerciseFigure exId={ex.id} color={accent} size={210} />
+            <div style={{ background: '#00000040', border: '1px solid #ffffff08', borderRadius: 12, padding: photoUrl && !imgErr ? 0 : '14px', margin: '10px 0 14px', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
+              {photoUrl && !imgErr ? (
+                <img src={photoUrl} alt={ex.name} loading="lazy" onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#fff' }} />
+              ) : (
+                <ExerciseFigure exId={ex.id} color={accent} size={210} />
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
               <span style={{ fontSize: 11, background: accent + '18', color: accent, padding: '3px 9px', borderRadius: 6, fontWeight: 700 }}>{ex.focus}</span>
