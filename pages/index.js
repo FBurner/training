@@ -625,8 +625,9 @@ function PlannerView({ onBack, onSaved }) {
               const hist = history[ex.id] || [];
               const cur = Number(weights[ex.id]) || 0;
               const STEP = 2.5;
+              const clamp = (v) => Math.min(200, Math.max(0, v));
               const bump = (delta) => setWeights(prev => {
-                const v = Math.max(0, Math.round(((Number(prev[ex.id]) || 0) + delta) * 2) / 2);
+                const v = clamp(Math.round(((Number(prev[ex.id]) || 0) + delta) * 2) / 2);
                 return { ...prev, [ex.id]: v };
               });
               const spark = hist.slice(0, 8).reverse();
@@ -638,7 +639,13 @@ function PlannerView({ onBack, onSaved }) {
                     <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</span>
                     <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${d.accent}40`, borderRadius: 10, overflow: 'hidden' }}>
                       <button onClick={() => bump(-STEP)} title="−2,5 kg" style={stepBtn}><Minus size={16} /></button>
-                      <span style={{ minWidth: 66, textAlign: 'center', fontSize: 14, fontWeight: 800, color: '#fff' }}>{cur} kg</span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2, minWidth: 66 }}>
+                        <input type="number" inputMode="decimal" min="0" max="200" step="2.5" value={cur}
+                          onChange={e => setWeights(prev => ({ ...prev, [ex.id]: e.target.value === '' ? 0 : clamp(Number(e.target.value)) }))}
+                          onFocus={e => e.target.select()}
+                          style={{ width: 46, textAlign: 'right', fontSize: 15, fontWeight: 800, color: '#fff', background: 'transparent', border: 'none', outline: 'none', padding: 0, MozAppearance: 'textfield' }} />
+                        <span style={{ fontSize: 11, color: '#666' }}>kg</span>
+                      </div>
                       <button onClick={() => bump(STEP)} title="+2,5 kg" style={stepBtn}><Plus size={16} /></button>
                     </div>
                   </div>
