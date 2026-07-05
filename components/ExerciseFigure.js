@@ -45,7 +45,15 @@ const IMG = {
   // dataset -> intentionally fall back to the accurate SVG diagram.
 };
 
+// Full-URL overrides (Wikimedia Commons) for exercises the free-exercise-db
+// lacks a correct photo for. Special:FilePath is a stable hotlinkable redirect.
+const IMG_URL = {
+  k5: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kettlebell_Dead_Snatch_Squat_2_-_Pull.jpg?width=640',
+  k6: 'https://commons.wikimedia.org/wiki/Special:FilePath/Farmers_walk.jpg?width=640',
+};
+
 export function imageUrlFor(exId) {
+  if (IMG_URL[exId]) return IMG_URL[exId];
   const id = IMG[exId];
   return id ? `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/${id}/0.jpg` : null;
 }
