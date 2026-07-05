@@ -11,6 +11,16 @@ const PATTERN = {
   l1: 'squat', l2: 'legiso', l3: 'legiso', l4: 'calf', l5: 'hinge', l6: 'legiso',
   // Kettlebell
   k1: 'hinge', k2: 'squat', k3: 'overhead', k4: 'row', k5: 'hinge', k6: 'carry',
+  // Cooldown stretches
+  bs1: 'fly', bs2: 'fly', bs3: 'overhead', bs4: 'fly', bs5: 'pigeon', bs6: 'lunge',
+  rs1: 'overhead', rs2: 'rotation', rs3: 'child', rs4: 'fly', rs5: 'rotation', rs6: 'pigeon', rs7: 'lunge',
+  ls1: 'quad', ls2: 'hinge', ls3: 'calf', ls4: 'lunge', ls5: 'pigeon',
+  ks1: 'lunge', ks2: 'hinge', ks3: 'rotation', ks4: 'fly', ks5: 'rotation', ks6: 'pigeon',
+  // Warm-up activation
+  lw1: 'bridge', lw2: 'clamshell', lw3: 'squat', kw1: 'bridge', kw2: 'rotation', kw3: 'squat',
+  // Standalone mobility routine
+  m_act1: 'bridge', m_act2: 'clamshell', m_act3: 'squat', m_act4: 'bridge', m_act5: 'rotation',
+  m_str1: 'pigeon', m_str2: 'lunge', m_str3: 'rotation', m_str4: 'lunge', m_str5: 'child', m_str6: 'rotation',
 };
 
 export function patternFor(exId) { return PATTERN[exId] || 'press'; }
@@ -43,6 +53,9 @@ const IMG = {
   k4: 'Alternating_Kettlebell_Row',     // confirmed kettlebell row
   // k5 (KB deadlift) and k6 (farmer's walk) have no correct photo in the
   // dataset -> intentionally fall back to the accurate SVG diagram.
+  // Glute bridge / floor hip thrust (activation + warm-up)
+  m_act1: 'Butt_Lift_(Bridge)', m_act4: 'Butt_Lift_(Bridge)', lw1: 'Butt_Lift_(Bridge)', kw1: 'Butt_Lift_(Bridge)',
+  // Other mobility/warm-up items have no reliable free photo -> SVG diagram.
 };
 
 // Full-URL overrides (Wikimedia Commons) for exercises the free-exercise-db
@@ -181,6 +194,73 @@ export default function ExerciseFigure({ exId, color = '#e5e7eb', size = 200 }) 
         <line x1="40" y1="48" x2="40" y2="66" {...A} /><circle cx="40" cy="70" r={7} fill={ac} stroke="none" />
         <line x1="80" y1="48" x2="80" y2="66" {...A} /><circle cx="80" cy="70" r={7} fill={ac} stroke="none" />
         <line x1="60" y1="72" x2="52" y2="94" {...F} /><line x1="60" y1="72" x2="68" y2="94" {...F} />
+      </>);
+      break;
+    case 'bridge': // glute bridge / floor hip thrust
+      content = (<>
+        <line x1="16" y1="92" x2="104" y2="92" {...F} />
+        {head(28, 80)}
+        <path d="M35 84 L62 58 L86 86" {...F} />
+        <line x1="35" y1="84" x2="28" y2="92" {...F} />
+        <line x1="86" y1="86" x2="86" y2="92" {...F} />
+        <path d="M54 50 q8 -5 16 0" {...A} strokeDasharray="3 4" />
+      </>);
+      break;
+    case 'clamshell': // side-lying clamshell
+      content = (<>
+        {head(26, 46)}
+        <line x1="32" y1="50" x2="84" y2="60" {...F} />
+        <path d="M84 60 L68 76 L84 84" {...F} />
+        <path d="M84 60 L72 66 L92 72" {...A} />
+        <path d="M78 52 q10 -3 14 6" {...A} strokeDasharray="3 4" />
+      </>);
+      break;
+    case 'pigeon': // figure-4 / piriformis
+      content = (<>
+        {head(60, 24)}
+        <line x1="60" y1="31" x2="60" y2="60" {...F} />
+        <line x1="60" y1="60" x2="42" y2="78" {...F} />
+        <line x1="60" y1="60" x2="84" y2="76" {...F} />
+        <line x1="46" y1="74" x2="74" y2="66" {...A} />
+        <line x1="60" y1="44" x2="70" y2="62" {...F} />
+      </>);
+      break;
+    case 'lunge': // hip flexor lunge / adductor
+      content = (<>
+        {head(48, 22)}
+        <line x1="48" y1="29" x2="52" y2="58" {...F} />
+        <line x1="52" y1="58" x2="44" y2="78" {...F} /><line x1="44" y1="78" x2="44" y2="94" {...F} />
+        <line x1="52" y1="58" x2="88" y2="92" {...F} />
+        <line x1="50" y1="42" x2="60" y2="54" {...F} />
+        <line x1="30" y1="94" x2="94" y2="94" {...F} />
+      </>);
+      break;
+    case 'rotation': // t-spine rotation / bird-dog / cat-cow / 90-90
+      content = (<>
+        <line x1="30" y1="66" x2="86" y2="66" {...F} />
+        {head(24, 62)}
+        <line x1="38" y1="66" x2="36" y2="90" {...F} />
+        <line x1="80" y1="66" x2="82" y2="90" {...F} />
+        <line x1="80" y1="66" x2="102" y2="56" {...F} />
+        <path d="M50 60 q12 -12 24 -3" {...A} strokeDasharray="3 4" />
+      </>);
+      break;
+    case 'child': // child's pose / thread the needle
+      content = (<>
+        <line x1="18" y1="92" x2="102" y2="92" {...F} />
+        {head(30, 82)}
+        <path d="M36 84 L74 84 L86 66" {...F} />
+        <line x1="36" y1="84" x2="20" y2="88" {...F} />
+        <line x1="86" y1="66" x2="88" y2="92" {...F} />
+      </>);
+      break;
+    case 'quad': // standing quad stretch
+      content = (<>
+        {head(54, 22)}
+        <line x1="54" y1="29" x2="56" y2="60" {...F} />
+        <line x1="56" y1="60" x2="52" y2="94" {...F} />
+        <path d="M56 60 C80 62 78 42 64 44" {...F} />
+        <line x1="55" y1="44" x2="66" y2="46" {...F} />
       </>);
       break;
     default:

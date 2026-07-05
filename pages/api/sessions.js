@@ -17,7 +17,19 @@ export default async function handler(req, res) {
     const userId = session.user.id || session.user.email;
 
     if (req.method === 'POST') {
-      const { day, exercises, totalSets, doneSets, completedSets, status } = req.body || {};
+      const body = req.body || {};
+
+      // Mobility log: an append-only completed doc, kept separate from workouts.
+      if (body.type === 'mobility') {
+        await col.insertOne({
+          userId, type: 'mobility', day: 'mobility',
+          items: Array.isArray(body.items) ? body.items : [],
+          status: 'completed', completedAt: new Date(),
+        });
+        return res.status(200).json({ ok: true });
+      }
+
+      const { day, exercises, totalSets, doneSets, completedSets, weights, durationMinutes, status } = body;
       if (!day) return res.status(400).json({ error: 'day fehlt' });
 
       const isComplete = status === 'completed';
@@ -25,8 +37,10 @@ export default async function handler(req, res) {
         { userId, day, status: 'active' },
         {
           $set: {
-            userId, day, exercises, totalSets, doneSets,
+            userId, day, type: 'workout', exercises, totalSets, doneSets,
             completedSets: completedSets || {},
+            weights: weights || {},
+            ...(durationMinutes != null ? { durationMinutes } : {}),
             status: isComplete ? 'completed' : 'active',
             updatedAt: new Date(),
             ...(isComplete ? { completedAt: new Date() } : {}),
@@ -39,17 +53,23 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const { status, day, limit = 30 } = req.query;
+      const { status, day, type, limit = 30 } = req.query;
 
+      if (type === 'mobility') {
+        const m = await col.find({ userId, type: 'mobility' })
+          .sort({ completedAt: -1 }).limit(parseInt(limit)).toArray();
+        return res.status(200).json(m);
+      }
+
+      // Workout queries exclude mobility logs (type $ne 'mobility' also matches
+      // legacy docs that predate the type field).
       if (status === 'active') {
-        const active = await col.find({ userId, status: 'active', ...(day ? { day } : {}) })
+        const active = await col.find({ userId, status: 'active', type: { $ne: 'mobility' }, ...(day ? { day } : {}) })
           .sort({ updatedAt: -1 }).toArray();
         return res.status(200).json(active);
       }
 
-      // History = everything not currently active (old docs without a status
-      // field count as completed thanks to $ne).
-      const sessions = await col.find({ userId, status: { $ne: 'active' }, ...(day ? { day } : {}) })
+      const sessions = await col.find({ userId, status: { $ne: 'active' }, type: { $ne: 'mobility' }, ...(day ? { day } : {}) })
         .sort({ completedAt: -1 }).limit(parseInt(limit)).toArray();
       return res.status(200).json(sessions);
     }

@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { DAYS } from '../lib/data';
+import { DAYS, MOBILITY } from '../lib/data';
 import ExerciseFigure, { imageUrlFor } from '../components/ExerciseFigure';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
-  TrendingUp, User, Weight, Info, X, SlidersHorizontal,
+  TrendingUp, User, Weight, Info, X, SlidersHorizontal, Activity,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints, kettlebell: Weight };
@@ -103,11 +103,55 @@ function RestTimer({ seconds, accent, startedAt, label, onClose }) {
   );
 }
 
+// Shared info modal: photo (with video + SVG fallback) + details. Works for
+// exercises, stretches and mobility items (any object with id/name/sub/tip
+// and optional focus|target / sets|reps / hold / weight / posture).
+function InfoModal({ item, accent, onClose }) {
+  const [imgErr, setImgErr] = useState(false);
+  const url = imageUrlFor(item.id);
+  const isVideo = url && /\.(webm|mp4)$/i.test(url.split('?')[0]);
+  const chips = [];
+  if (item.focus || item.target) chips.push({ t: item.focus || item.target, hi: true });
+  if (item.sets && item.reps) chips.push({ t: `${item.sets} × ${item.reps}` });
+  else if (item.reps) chips.push({ t: item.reps });
+  if (item.hold) chips.push({ t: `${item.hold}s halten` });
+  if (item.weight) chips.push({ t: item.weight });
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#0d0d0f', border: `1px solid ${accent}40`, borderRadius: 18, padding: 22, maxWidth: 380, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{item.name}</div>
+            {item.sub && <div style={{ fontSize: 12, color: '#6b6890', marginTop: 2 }}>{item.sub}</div>}
+          </div>
+          <button onClick={onClose} style={{ background: '#1a1a1a', border: '1px solid #ffffff12', borderRadius: 8, color: '#888', padding: 6, cursor: 'pointer', display: 'flex', flexShrink: 0 }}><X size={16} /></button>
+        </div>
+        <div style={{ background: '#00000040', border: '1px solid #ffffff08', borderRadius: 12, padding: url && !imgErr ? 0 : '14px', margin: '10px 0 14px', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
+          {url && !imgErr ? (
+            isVideo ? (
+              <video src={url} autoPlay loop muted playsInline onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#000' }} />
+            ) : (
+              <img src={url} alt={item.name} loading="lazy" onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#fff' }} />
+            )
+          ) : (
+            <ExerciseFigure exId={item.id} color={accent} size={210} />
+          )}
+        </div>
+        {chips.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            {chips.map((c, i) => <span key={i} style={{ fontSize: 11, background: c.hi ? accent + '18' : '#ffffff08', color: c.hi ? accent : '#aaa', padding: '3px 9px', borderRadius: 6, fontWeight: c.hi ? 700 : 600 }}>{c.t}</span>)}
+            {item.posture && <span style={{ fontSize: 11, background: '#10b98115', color: '#10b981', padding: '3px 9px', borderRadius: 6, fontWeight: 700 }}>HALTUNG</span>}
+          </div>
+        )}
+        {item.tip && <p style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.65, margin: 0 }}>{item.tip}</p>}
+      </div>
+    </div>
+  );
+}
+
 function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, onSkip, weight, onWeight, prevWeight }) {
   const [open, setOpen] = useState(false);
   const [info, setInfo] = useState(false);
-  const [imgErr, setImgErr] = useState(false);
-  const photoUrl = imageUrlFor(ex.id);
   const states = Array.from({ length: ex.sets }, (_, i) => !!completedSets[`${ex.id}-${i}`]);
   const done = states.filter(Boolean).length;
   const allDone = done === ex.sets;
@@ -140,38 +184,7 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
         <span style={{ color: '#333', marginLeft: 4, display: 'flex' }}>{open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</span>
       </button>
 
-      {info && (
-        <div onClick={() => setInfo(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0d0d0f', border: `1px solid ${accent}40`, borderRadius: 18, padding: 22, maxWidth: 380, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{ex.name}</div>
-                <div style={{ fontSize: 12, color: '#6b6890', marginTop: 2 }}>{ex.sub}</div>
-              </div>
-              <button onClick={() => setInfo(false)} style={{ background: '#1a1a1a', border: '1px solid #ffffff12', borderRadius: 8, color: '#888', padding: 6, cursor: 'pointer', display: 'flex', flexShrink: 0 }}><X size={16} /></button>
-            </div>
-            <div style={{ background: '#00000040', border: '1px solid #ffffff08', borderRadius: 12, padding: photoUrl && !imgErr ? 0 : '14px', margin: '10px 0 14px', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
-              {photoUrl && !imgErr ? (
-                /\.(webm|mp4)$/i.test(photoUrl.split('?')[0]) ? (
-                  <video src={photoUrl} autoPlay loop muted playsInline onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#000' }} />
-                ) : (
-                  <img src={photoUrl} alt={ex.name} loading="lazy" onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#fff' }} />
-                )
-              ) : (
-                <ExerciseFigure exId={ex.id} color={accent} size={210} />
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              <span style={{ fontSize: 11, background: accent + '18', color: accent, padding: '3px 9px', borderRadius: 6, fontWeight: 700 }}>{ex.focus}</span>
-              <span style={{ fontSize: 11, background: '#ffffff08', color: '#aaa', padding: '3px 9px', borderRadius: 6, fontWeight: 600 }}>{ex.sets} × {ex.reps}</span>
-              <span style={{ fontSize: 11, background: '#ffffff08', color: '#aaa', padding: '3px 9px', borderRadius: 6, fontWeight: 600 }}>{ex.weight}</span>
-              {ex.posture && <span style={{ fontSize: 11, background: '#10b98115', color: '#10b981', padding: '3px 9px', borderRadius: 6, fontWeight: 700 }}>HALTUNG</span>}
-            </div>
-            <p style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.65, margin: 0 }}>{ex.tip}</p>
-            <p style={{ fontSize: 11, color: '#555', margin: '12px 0 0', lineHeight: 1.5 }}>Schematische Darstellung der Bewegung.</p>
-          </div>
-        </div>
-      )}
+      {info && <InfoModal item={ex} accent={accent} onClose={() => setInfo(false)} />}
 
       {open && (
         <div style={{ padding: '0 16px 16px', borderTop: '1px solid #ffffff06' }}>
@@ -343,7 +356,7 @@ function StatsView({ onBack }) {
   );
 }
 
-function OverviewView({ onNew, onResume, onStats, onProfile, onPlanner }) {
+function OverviewView({ onNew, onResume, onStats, onProfile, onPlanner, onMobility }) {
   const [sessions, setSessions] = useState([]);
   const [active, setActive] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -383,6 +396,10 @@ function OverviewView({ onNew, onResume, onStats, onProfile, onPlanner }) {
 
         <button onClick={onNew} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 12, padding: '16px', fontSize: 16, fontWeight: 800, cursor: 'pointer', marginBottom: 28 }}>
           <Plus size={20} /> Neue Session starten
+        </button>
+
+        <button onClick={onMobility} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: 'transparent', color: '#ec4899', border: '1px solid #ec489955', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: -14, marginBottom: 28 }}>
+          <Activity size={18} /> Mobilität · Hüfte & Glutes
         </button>
 
         <div style={{ marginBottom: 28 }}>
@@ -679,6 +696,102 @@ function PlannerView({ onBack, onSaved }) {
   );
 }
 
+function MobilityView({ onBack }) {
+  const [done, setDone] = useState({});
+  const [timer, setTimer] = useState(null);
+  const [infoItem, setInfoItem] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [history, setHistory] = useState([]);
+  const accent = MOBILITY.accent;
+
+  const loadHistory = () => fetch('/api/sessions?type=mobility')
+    .then(r => (r.ok ? r.json() : []))
+    .then(h => setHistory(Array.isArray(h) ? h : []))
+    .catch(e => console.error('[mobility] history load failed:', e));
+  useEffect(() => { loadHistory(); }, []);
+
+  const allItems = MOBILITY.sections.flatMap(s => s.items);
+  const doneCount = allItems.filter(it => done[it.id]).length;
+
+  const save = async () => {
+    const items = allItems.filter(it => done[it.id]).map(it => it.id);
+    if (!items.length) { setMsg('Nichts markiert'); return; }
+    setSaving(true); setMsg(null);
+    try {
+      const r = await fetch('/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'mobility', day: 'mobility', items }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+      setDone({}); await loadHistory(); setMsg('Gespeichert');
+    } catch (e) { setMsg('Fehler: ' + e.message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 90 }}>
+      {timer && <RestTimer seconds={timer.seconds} accent={accent} startedAt={timer.startedAt} label="Halten" onClose={() => setTimer(null)} />}
+      {infoItem && <InfoModal item={infoItem} accent={accent} onClose={() => setInfoItem(null)} />}
+      <div style={{ background: '#0d0d0d', borderBottom: '1px solid #ffffff08', padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8, color: '#888', padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}><ArrowLeft size={15} /> Zurück</button>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><Activity size={19} /> {MOBILITY.label}</h1>
+      </div>
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
+        <p style={{ color: '#6b6890', fontSize: 13, margin: '0 0 18px' }}>{MOBILITY.intro}</p>
+        {MOBILITY.sections.map(sec => (
+          <div key={sec.title} style={{ background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '14px', marginBottom: 14 }}>
+            <p style={{ fontSize: 10, color: accent, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 10px' }}>{sec.title}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              {sec.items.map(it => {
+                const isDone = !!done[it.id];
+                return (
+                  <div key={it.id} style={{ background: '#00000030', borderRadius: 10, padding: '11px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <button onClick={() => setDone(p => ({ ...p, [it.id]: !p[it.id] }))} title="Erledigt"
+                        style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: isDone ? '#22c55e' : 'transparent', border: `1px solid ${isDone ? '#22c55e' : accent + '55'}`, color: isDone ? '#000' : accent, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        {isDone ? <Check size={16} strokeWidth={3} /> : <Circle size={10} />}
+                      </button>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: isDone ? '#666' : '#eee' }}>{it.name}</div>
+                        <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>{it.target} · {sec.kind === 'hold' ? `${it.hold}s halten` : it.reps}</div>
+                      </div>
+                      <span role="button" title="Info" onClick={() => setInfoItem(it)} style={{ display: 'flex', color: accent, opacity: 0.75, cursor: 'pointer', flexShrink: 0 }}><Info size={16} /></span>
+                      {sec.kind === 'hold' && (
+                        <button onClick={() => setTimer({ seconds: it.hold, startedAt: Date.now() })} title="Halten starten"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: accent + '20', color: accent, border: `1px solid ${accent}40`, borderRadius: 9, padding: '8px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}><Play size={13} /> {it.hold}s</button>
+                      )}
+                    </div>
+                    <p style={{ fontSize: 11, color: '#666', margin: '6px 0 0', lineHeight: 1.5 }}>{it.tip}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {history.length > 0 && (
+          <div style={{ background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '14px' }}>
+            <p style={{ fontSize: 10, color: accent, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 10px' }}>Verlauf</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {history.slice(0, 10).map((h, i) => (
+                <div key={h._id || i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#888' }}>
+                  <span>{fmtDate(new Date(h.completedAt).getTime())}</span>
+                  <span style={{ color: '#ccc', fontWeight: 600 }}>{h.items?.length ?? 0} Übungen</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0c0a14ee', backdropFilter: 'blur(8px)', borderTop: '1px solid #ffffff10', padding: '12px 16px' }}>
+        <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {msg && <span style={{ fontSize: 12, color: String(msg).startsWith('Fehler') ? '#f87171' : '#22c55e', fontWeight: 600 }}>{msg}</span>}
+          <span style={{ fontSize: 12, color: '#666' }}>{doneCount}/{allItems.length}</span>
+          <button onClick={save} disabled={saving} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, background: accent, color: '#fff', border: 'none', borderRadius: 10, padding: '12px 22px', fontSize: 14, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Speichern…' : 'Session speichern'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TrainingApp() {
   const { data: session, status } = useSession();
   const [view, setView] = useState('overview'); // 'overview' | 'training' | 'stats'
@@ -692,6 +805,7 @@ export default function TrainingApp() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [syncState, setSyncState] = useState(null); // null | 'saving' | 'saved' | error string
+  const [infoItem, setInfoItem] = useState(null);
 
   const day = DAYS[activeDay];
   const completedSets = allSets[activeDay];
@@ -861,9 +975,12 @@ export default function TrainingApp() {
     onStats={() => setView('stats')}
     onProfile={() => setView('profile')}
     onPlanner={() => setView('planner')}
+    onMobility={() => setView('mobility')}
   />;
 
   if (view === 'profile') return <ProfileView onBack={() => setView('overview')} />;
+
+  if (view === 'mobility') return <MobilityView onBack={() => setView('overview')} />;
 
   if (view === 'planner') return <PlannerView
     onBack={() => setView('overview')}
@@ -915,6 +1032,7 @@ export default function TrainingApp() {
   return (
     <div style={{ minHeight: '100vh', background: day.bg, fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', transition: 'background 0.3s', paddingBottom: 60 }}>
       {timer && <RestTimer seconds={timer.seconds} accent={timer.accent} startedAt={timer.startedAt} label={timer.label} onClose={() => setTimer(null)} />}
+      {infoItem && <InfoModal item={infoItem} accent={day.accent} onClose={() => setInfoItem(null)} />}
 
       {/* Nav */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: day.bg + 'ee', backdropFilter: 'blur(10px)', borderBottom: '1px solid #ffffff08', padding: '10px 14px' }}>
@@ -970,6 +1088,29 @@ export default function TrainingApp() {
         </div>
       </div>
 
+      {/* Warm-up / activation */}
+      {(day.warmup?.length > 0) && (
+        <div style={{ maxWidth: 600, margin: '14px auto 0', padding: '0 14px' }}>
+          <div style={{ background: '#ffffff04', border: '1px solid #ffffff06', borderRadius: 14, padding: '14px' }}>
+            <p style={{ fontSize: 10, color: day.accent, letterSpacing: 2, textTransform: 'uppercase', margin: '0 0 12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Activity size={14} /> Aktivierung · Warm-up</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              {day.warmup.map(w => (
+                <div key={w.id} style={{ background: '#00000030', borderRadius: 10, padding: '11px 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#eee' }}>{w.name}</div>
+                      <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>{w.target} · {w.reps}</div>
+                    </div>
+                    <span role="button" title="Info" onClick={() => setInfoItem(w)} style={{ display: 'flex', color: day.accent, opacity: 0.75, cursor: 'pointer', flexShrink: 0 }}><Info size={16} /></span>
+                  </div>
+                  <p style={{ fontSize: 11, color: '#666', margin: '6px 0 0', lineHeight: 1.5 }}>{w.tip}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Exercises */}
       <div style={{ maxWidth: 600, margin: '14px auto 0', padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {day.exercises.map(ex => (
@@ -1011,6 +1152,7 @@ export default function TrainingApp() {
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#eee' }}>{st.name}</div>
                       <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>{st.target} · {st.hold}s halten</div>
                     </div>
+                    <span role="button" title="Info" onClick={() => setInfoItem(st)} style={{ display: 'flex', color: day.accent, opacity: 0.75, cursor: 'pointer', flexShrink: 0 }}><Info size={16} /></span>
                     <button onClick={() => setTimer({ seconds: st.hold, accent: day.accent, startedAt: Date.now(), label: 'Halten' })} title="Halten starten"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: day.accent + '20', color: day.accent, border: `1px solid ${day.accent}40`, borderRadius: 9, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                       <Play size={13} /> {st.hold}s
