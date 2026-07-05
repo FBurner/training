@@ -126,7 +126,11 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
             </div>
             <div style={{ background: '#00000040', border: '1px solid #ffffff08', borderRadius: 12, padding: photoUrl && !imgErr ? 0 : '14px', margin: '10px 0 14px', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
               {photoUrl && !imgErr ? (
-                <img src={photoUrl} alt={ex.name} loading="lazy" onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#fff' }} />
+                /\.(webm|mp4)$/i.test(photoUrl.split('?')[0]) ? (
+                  <video src={photoUrl} autoPlay loop muted playsInline onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#000' }} />
+                ) : (
+                  <img src={photoUrl} alt={ex.name} loading="lazy" onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#fff' }} />
+                )
               ) : (
                 <ExerciseFigure exId={ex.id} color={accent} size={210} />
               )}

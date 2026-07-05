@@ -48,8 +48,10 @@ const IMG = {
 // Full-URL overrides (Wikimedia Commons) for exercises the free-exercise-db
 // lacks a correct photo for. Special:FilePath is a stable hotlinkable redirect.
 const IMG_URL = {
-  k5: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kettlebell_Dead_Snatch_Squat_2_-_Pull.jpg?width=640',
-  k6: 'https://commons.wikimedia.org/wiki/Special:FilePath/Farmers_walk.jpg?width=640',
+  // two-hand kettlebell hinge (back-swing) = the KB deadlift/RDL position
+  k5: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kettlebell_swing_with_arms_extended_upon_back_swing.jpg?width=640',
+  // real kettlebell farmer's walk (Commons only has a video, no still)
+  k6: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kettlebell_Farmer_Walks.webm',
 };
 
 export function imageUrlFor(exId) {
