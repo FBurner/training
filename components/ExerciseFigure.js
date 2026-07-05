@@ -39,10 +39,10 @@ const IMG = {
   l6: 'Thigh_Abductor',
   k1: 'One-Arm_Kettlebell_Swings',
   k2: 'Goblet_Squat',
-  k3: 'Clean_and_Press',
-  k4: 'One-Arm_Kettlebell_Row',
-  k5: 'Kettlebell_One-Legged_Deadlift',
-  k6: "Farmer's_Walk",
+  k3: 'Alternating_Kettlebell_Press',   // real kettlebell press (was a barbell clean&press)
+  k4: 'Alternating_Kettlebell_Row',     // confirmed kettlebell row
+  // k5 (KB deadlift) and k6 (farmer's walk) have no correct photo in the
+  // dataset -> intentionally fall back to the accurate SVG diagram.
 };
 
 export function imageUrlFor(exId) {
