@@ -7,7 +7,7 @@ import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
-  TrendingUp, User, Weight, Info, X,
+  TrendingUp, User, Weight, Info, X, SlidersHorizontal,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints, kettlebell: Weight };
@@ -321,7 +321,7 @@ function StatsView({ onBack }) {
   );
 }
 
-function OverviewView({ onNew, onResume, onStats, onProfile }) {
+function OverviewView({ onNew, onResume, onStats, onProfile, onPlanner }) {
   const [sessions, setSessions] = useState([]);
   const [active, setActive] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -352,6 +352,7 @@ function OverviewView({ onNew, onResume, onStats, onProfile }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Deine Sessions</h1>
           <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onPlanner} title="Gewichte planen" style={{ width: 42, height: 42, background: 'transparent', border: '1px solid #ffffff12', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><SlidersHorizontal size={18} /></button>
             <button onClick={onProfile} title="Profil" style={{ width: 42, height: 42, background: 'transparent', border: '1px solid #ffffff12', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={18} /></button>
             <button onClick={onStats} title="Statistiken" style={{ width: 42, height: 42, background: 'transparent', border: '1px solid #ffffff12', borderRadius: 10, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BarChart3 size={18} /></button>
           </div>
@@ -556,6 +557,111 @@ function ProfileView({ onBack }) {
   );
 }
 
+function PlannerView({ onBack, onSaved }) {
+  const [weights, setWeights] = useState({});   // exId -> editable value
+  const [history, setHistory] = useState({});   // exId -> [{date, weight}]
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [openHist, setOpenHist] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      let working = {};
+      try { const r = await fetch('/api/profile'); if (r.ok) { const p = await r.json(); working = p?.workingWeights || {}; } }
+      catch (e) { console.error('[planner] profile load failed:', e); }
+      const base = {};
+      Object.values(DAYS).forEach(d => d.exercises.forEach(ex => {
+        base[ex.id] = working[ex.id] != null ? working[ex.id] : parseWeight(ex.weight);
+      }));
+      setWeights(base);
+      try {
+        const r = await fetch('/api/sessions?limit=100');
+        if (r.ok) {
+          const done = await r.json();
+          const h = {};
+          if (Array.isArray(done)) done.forEach(s => {
+            const w = s.weights || {};
+            Object.keys(w).forEach(exId => { if (w[exId]) (h[exId] = h[exId] || []).push({ date: s.completedAt, weight: w[exId] }); });
+          });
+          Object.values(h).forEach(arr => arr.sort((a, b) => new Date(b.date) - new Date(a.date)));
+          setHistory(h);
+        }
+      } catch (e) { console.error('[planner] history load failed:', e); }
+      setLoading(false);
+    })();
+  }, []);
+
+  const save = async () => {
+    setSaving(true); setMsg(null);
+    const payload = {};
+    Object.entries(weights).forEach(([k, v]) => { const n = Number(v); if (!Number.isNaN(n) && n > 0) payload[k] = n; });
+    try {
+      const r = await fetch('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workingWeights: payload }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `HTTP ${r.status}`);
+      onSaved && onSaved(payload);
+      setMsg('Gespeichert');
+    } catch (e) { setMsg('Fehler: ' + e.message); } finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 90 }}>
+      <div style={{ background: '#0d0d0d', borderBottom: '1px solid #ffffff08', padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8, color: '#888', padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}><ArrowLeft size={15} /> Zurück</button>
+        <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><SlidersHorizontal size={19} /> Gewichte planen</h1>
+      </div>
+
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
+        <p style={{ color: '#6b6890', fontSize: 13, margin: '0 0 18px' }}>Plane das Startgewicht pro Übung. Es wird beim nächsten Training vorausgefüllt. Tippe auf die Historie für vergangene Werte.</p>
+        {loading ? (
+          <div style={{ color: '#555', fontSize: 13, textAlign: 'center', padding: '30px 0' }}>Lade…</div>
+        ) : Object.values(DAYS).map(d => (
+          <div key={d.id} style={{ background: '#0d0d0d', border: '1px solid #ffffff08', borderRadius: 12, padding: '14px', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 800, color: d.accent, marginBottom: 10 }}><DayIcon name={d.icon} size={15} /> {d.label}</div>
+            {d.exercises.map(ex => {
+              const hist = history[ex.id] || [];
+              const isOpen = openHist === ex.id;
+              return (
+                <div key={ex.id} style={{ borderTop: '1px solid #ffffff06', padding: '10px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</span>
+                    <input type="number" inputMode="decimal" min="0" step="0.5" value={weights[ex.id] ?? ''}
+                      onChange={e => setWeights(prev => ({ ...prev, [ex.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
+                      style={{ width: 74, background: '#00000040', border: `1px solid ${d.accent}40`, borderRadius: 8, padding: '7px 9px', color: '#fff', fontSize: 14, outline: 'none', textAlign: 'right' }} />
+                    <span style={{ fontSize: 12, color: '#666', width: 16 }}>kg</span>
+                    <button onClick={() => setOpenHist(isOpen ? null : ex.id)} title="Historie" style={{ background: 'transparent', border: '1px solid #ffffff10', borderRadius: 7, color: hist.length ? d.accent : '#555', padding: '6px', cursor: 'pointer', display: 'flex' }}><Clock size={14} /></button>
+                  </div>
+                  {isOpen && (
+                    <div style={{ margin: '8px 0 2px', paddingLeft: 2 }}>
+                      {hist.length === 0 ? (
+                        <div style={{ fontSize: 11, color: '#555' }}>Noch keine Historie.</div>
+                      ) : hist.slice(0, 12).map((h, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', padding: '3px 0' }}>
+                          <span>{fmtDate(new Date(h.date).getTime())}</span>
+                          <span style={{ color: '#ccc', fontWeight: 600 }}>{h.weight} kg</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {!loading && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#0c0a14ee', backdropFilter: 'blur(8px)', borderTop: '1px solid #ffffff10', padding: '12px 16px' }}>
+          <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            {msg && <span style={{ fontSize: 12, color: String(msg).startsWith('Fehler') ? '#f87171' : '#22c55e', fontWeight: 600 }}>{msg}</span>}
+            <button onClick={save} disabled={saving} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 22px', fontSize: 14, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Speichern…' : 'Speichern'}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TrainingApp() {
   const { data: session, status } = useSession();
   const [view, setView] = useState('overview'); // 'overview' | 'training' | 'stats'
@@ -737,9 +843,25 @@ export default function TrainingApp() {
     onResume={(d, sets) => { setAllSets(prev => ({ ...prev, [d]: sets || {} })); setActiveDay(d); setView('training'); }}
     onStats={() => setView('stats')}
     onProfile={() => setView('profile')}
+    onPlanner={() => setView('planner')}
   />;
 
   if (view === 'profile') return <ProfileView onBack={() => setView('overview')} />;
+
+  if (view === 'planner') return <PlannerView
+    onBack={() => setView('overview')}
+    onSaved={(w) => {
+      setProfileWeights(prev => ({ ...prev, ...w }));
+      setAllWeights(prev => {
+        const next = {};
+        Object.values(DAYS).forEach(d => {
+          next[d.id] = { ...(prev[d.id] || {}) };
+          d.exercises.forEach(ex => { if (w[ex.id] != null) next[d.id][ex.id] = w[ex.id]; });
+        });
+        return next;
+      });
+    }}
+  />;
 
   if (view === 'select') return (
     <div style={{ minHeight: '100vh', background: '#0c0a14', fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', padding: '28px 16px' }}>
