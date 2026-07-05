@@ -563,7 +563,6 @@ function PlannerView({ onBack, onSaved }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
-  const [openHist, setOpenHist] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -620,28 +619,32 @@ function PlannerView({ onBack, onSaved }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 800, color: d.accent, marginBottom: 10 }}><DayIcon name={d.icon} size={15} /> {d.label}</div>
             {d.exercises.map(ex => {
               const hist = history[ex.id] || [];
-              const isOpen = openHist === ex.id;
+              const cur = Number(weights[ex.id]) || 0;
+              const base = cur || parseWeight(ex.weight) || 20;
+              const cap = Math.max(60, Math.ceil((base * 2) / 10) * 10);
+              const spark = hist.slice(0, 8).reverse();
+              const maxW = Math.max(1, ...spark.map(h => h.weight));
               return (
-                <div key={ex.id} style={{ borderTop: '1px solid #ffffff06', padding: '10px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div key={ex.id} style={{ borderTop: '1px solid #ffffff06', padding: '12px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
                     <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</span>
-                    <input type="number" inputMode="decimal" min="0" step="0.5" value={weights[ex.id] ?? ''}
-                      onChange={e => setWeights(prev => ({ ...prev, [ex.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
-                      style={{ width: 74, background: '#00000040', border: `1px solid ${d.accent}40`, borderRadius: 8, padding: '7px 9px', color: '#fff', fontSize: 14, outline: 'none', textAlign: 'right' }} />
-                    <span style={{ fontSize: 12, color: '#666', width: 16 }}>kg</span>
-                    <button onClick={() => setOpenHist(isOpen ? null : ex.id)} title="Historie" style={{ background: 'transparent', border: '1px solid #ffffff10', borderRadius: 7, color: hist.length ? d.accent : '#555', padding: '6px', cursor: 'pointer', display: 'flex' }}><Clock size={14} /></button>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: d.accent, whiteSpace: 'nowrap' }}>{cur} kg</span>
                   </div>
-                  {isOpen && (
-                    <div style={{ margin: '8px 0 2px', paddingLeft: 2 }}>
-                      {hist.length === 0 ? (
-                        <div style={{ fontSize: 11, color: '#555' }}>Noch keine Historie.</div>
-                      ) : hist.slice(0, 12).map((h, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', padding: '3px 0' }}>
-                          <span>{fmtDate(new Date(h.date).getTime())}</span>
-                          <span style={{ color: '#ccc', fontWeight: 600 }}>{h.weight} kg</span>
-                        </div>
-                      ))}
+                  <input type="range" min={0} max={cap} step={2.5} value={cur}
+                    onChange={e => setWeights(prev => ({ ...prev, [ex.id]: Number(e.target.value) }))}
+                    style={{ width: '100%', accentColor: d.accent, cursor: 'pointer' }} />
+                  {hist.length > 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 30, flex: 1 }}>
+                        {spark.map((h, i) => (
+                          <div key={i} title={`${fmtDate(new Date(h.date).getTime())}: ${h.weight} kg`}
+                            style={{ flex: 1, maxWidth: 14, height: `${Math.max(14, (h.weight / maxW) * 100)}%`, background: d.accent + (i === spark.length - 1 ? 'ff' : '55'), borderRadius: 2 }} />
+                        ))}
+                      </div>
+                      <span style={{ fontSize: 10, color: '#666', whiteSpace: 'nowrap' }}>zuletzt {hist[0].weight} kg · {fmtDate(new Date(hist[0].date).getTime())}</span>
                     </div>
+                  ) : (
+                    <div style={{ fontSize: 10, color: '#555', marginTop: 6 }}>Noch keine Historie</div>
                   )}
                 </div>
               );
