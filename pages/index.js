@@ -7,7 +7,7 @@ import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
-  TrendingUp, User, Weight, Info, X, SlidersHorizontal, Minus,
+  TrendingUp, User, Weight, Info, X, SlidersHorizontal,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints, kettlebell: Weight };
@@ -35,6 +35,32 @@ function restDaysLeft(lastMs) {
 }
 function fmtDate(ms) {
   return new Date(ms).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+}
+
+function WeightControl({ value, onChange, accent }) {
+  const cur = Number(value) || 0;
+  const clamp = (v) => Math.min(200, Math.max(0, v));
+  const pct = (clamp(cur) / 200) * 100;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <input
+        type="range" className="wslider" min={0} max={200} step={2.5} value={clamp(cur)}
+        onChange={e => onChange(clamp(Number(e.target.value)))}
+        onClick={e => e.stopPropagation()}
+        style={{ flex: 1, '--acc': accent, background: `linear-gradient(to right, ${accent} ${pct}%, #2a2a35 ${pct}%)` }}
+      />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 58 }}>
+        <input
+          type="number" className="no-spin" inputMode="decimal" min={0} max={200} step={2.5} value={cur}
+          onChange={e => onChange(e.target.value === '' ? 0 : clamp(Number(e.target.value)))}
+          onFocus={e => e.target.select()}
+          onClick={e => e.stopPropagation()}
+          style={{ width: 44, textAlign: 'right', fontSize: 15, fontWeight: 800, color: '#fff', background: 'transparent', border: 'none', outline: 'none', padding: 0 }}
+        />
+        <span style={{ fontSize: 11, color: '#666' }}>kg</span>
+      </div>
+    </div>
+  );
 }
 
 function RestTimer({ seconds, accent, startedAt, onClose }) {
@@ -152,20 +178,12 @@ function ExerciseCard({ ex, accent, accentDim, bgCard, completedSets, onToggle, 
           <div style={{ background: '#00000030', borderRadius: 8, padding: '10px 13px', margin: '12px 0', borderLeft: `3px solid ${ex.posture ? '#10b981' : accent}` }}>
             <p style={{ fontSize: 12, color: ex.posture ? '#6ee7b7' : accent + 'cc', margin: 0, lineHeight: 1.65 }}>{ex.tip}</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-            <label style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Gewicht</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input
-                type="number" inputMode="decimal" min="0" step="0.5"
-                value={weight ?? ''}
-                placeholder={String(parseWeight(ex.weight) || '')}
-                onChange={e => onWeight(ex.id, e.target.value === '' ? '' : Number(e.target.value))}
-                onClick={e => e.stopPropagation()}
-                style={{ width: 84, background: '#00000040', border: `1px solid ${accent}40`, borderRadius: 8, padding: '8px 10px', color: '#fff', fontSize: 14, outline: 'none' }}
-              />
-              <span style={{ fontSize: 12, color: '#666' }}>kg</span>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <label style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Gewicht</label>
+              <span style={{ fontSize: 11, color: '#555' }}>{prevWeight ? `zuletzt ${prevWeight} kg` : `Vorschlag ${ex.weight}`}</span>
             </div>
-            <span style={{ fontSize: 11, color: '#555' }}>{prevWeight ? `zuletzt ${prevWeight} kg` : `Vorschlag ${ex.weight}`}</span>
+            <WeightControl value={weight} accent={accent} onChange={v => onWeight(ex.id, v)} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             {states.map((d, si) => (
@@ -623,32 +641,12 @@ function PlannerView({ onBack, onSaved }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 800, color: d.accent, marginBottom: 10 }}><DayIcon name={d.icon} size={15} /> {d.label}</div>
             {d.exercises.map(ex => {
               const hist = history[ex.id] || [];
-              const cur = Number(weights[ex.id]) || 0;
-              const STEP = 2.5;
-              const clamp = (v) => Math.min(200, Math.max(0, v));
-              const bump = (delta) => setWeights(prev => {
-                const v = clamp(Math.round(((Number(prev[ex.id]) || 0) + delta) * 2) / 2);
-                return { ...prev, [ex.id]: v };
-              });
               const spark = hist.slice(0, 8).reverse();
               const maxW = Math.max(1, ...spark.map(h => h.weight));
-              const stepBtn = { width: 40, height: 40, background: '#00000030', border: 'none', color: d.accent, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 };
               return (
                 <div key={ex.id} style={{ borderTop: '1px solid #ffffff06', padding: '12px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${d.accent}40`, borderRadius: 10, overflow: 'hidden' }}>
-                      <button onClick={() => bump(-STEP)} title="−2,5 kg" style={stepBtn}><Minus size={16} /></button>
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2, minWidth: 66 }}>
-                        <input type="number" inputMode="decimal" min="0" max="200" step="2.5" value={cur}
-                          onChange={e => setWeights(prev => ({ ...prev, [ex.id]: e.target.value === '' ? 0 : clamp(Number(e.target.value)) }))}
-                          onFocus={e => e.target.select()}
-                          style={{ width: 46, textAlign: 'right', fontSize: 15, fontWeight: 800, color: '#fff', background: 'transparent', border: 'none', outline: 'none', padding: 0, MozAppearance: 'textfield' }} />
-                        <span style={{ fontSize: 11, color: '#666' }}>kg</span>
-                      </div>
-                      <button onClick={() => bump(STEP)} title="+2,5 kg" style={stepBtn}><Plus size={16} /></button>
-                    </div>
-                  </div>
+                  <div style={{ fontSize: 13, color: '#ddd', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</div>
+                  <WeightControl value={weights[ex.id]} accent={d.accent} onChange={v => setWeights(prev => ({ ...prev, [ex.id]: v }))} />
                   {hist.length > 0 ? (
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 30, flex: 1 }}>
