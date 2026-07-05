@@ -63,7 +63,7 @@ function WeightControl({ value, onChange, accent }) {
   );
 }
 
-function RestTimer({ seconds, accent, startedAt, onClose }) {
+function RestTimer({ seconds, accent, startedAt, label, onClose }) {
   // Timestamp-based: remaining is derived from wall-clock, so backgrounding
   // the tab (which suspends timers/intervals) never freezes the countdown —
   // when you come back it shows the correct time (or "done").
@@ -82,7 +82,7 @@ function RestTimer({ seconds, accent, startedAt, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)' }}>
       <div style={{ background: '#0d0d0d', border: `1px solid ${done ? '#22c55e40' : accent + '40'}`, borderRadius: 24, padding: '44px 52px', textAlign: 'center', minWidth: 280 }}>
-        <p style={{ color: done ? '#22c55e' : accent, fontSize: 11, letterSpacing: 3, marginBottom: 20, textTransform: 'uppercase', fontWeight: 600 }}>{done ? 'Bereit' : 'Pause'}</p>
+        <p style={{ color: done ? '#22c55e' : accent, fontSize: 11, letterSpacing: 3, marginBottom: 20, textTransform: 'uppercase', fontWeight: 600 }}>{done ? 'Bereit' : (label || 'Pause')}</p>
         <div style={{ position: 'relative', width: 130, height: 130, margin: '0 auto 28px' }}>
           <svg width="130" height="130" style={{ transform: 'rotate(-90deg)' }}>
             <circle cx="65" cy="65" r="56" fill="none" stroke="#1a1a1a" strokeWidth="8" />
@@ -914,7 +914,7 @@ export default function TrainingApp() {
 
   return (
     <div style={{ minHeight: '100vh', background: day.bg, fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', transition: 'background 0.3s', paddingBottom: 60 }}>
-      {timer && <RestTimer seconds={timer.seconds} accent={timer.accent} startedAt={timer.startedAt} onClose={() => setTimer(null)} />}
+      {timer && <RestTimer seconds={timer.seconds} accent={timer.accent} startedAt={timer.startedAt} label={timer.label} onClose={() => setTimer(null)} />}
 
       {/* Nav */}
       <div style={{ position: 'sticky', top: 0, zIndex: 100, background: day.bg + 'ee', backdropFilter: 'blur(10px)', borderBottom: '1px solid #ffffff08', padding: '10px 14px' }}>
@@ -999,6 +999,29 @@ export default function TrainingApp() {
             </div>
           ))}
         </div>
+
+        {(day.stretches?.length > 0) && (
+          <div style={{ background: '#ffffff04', border: '1px solid #ffffff06', borderRadius: 14, padding: '14px', marginTop: 8 }}>
+            <p style={{ fontSize: 10, color: day.accent, letterSpacing: 2, textTransform: 'uppercase', margin: '0 0 12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><PersonStanding size={14} /> Dehnen · Cooldown</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              {day.stretches.map(st => (
+                <div key={st.id} style={{ background: '#00000030', borderRadius: 10, padding: '11px 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#eee' }}>{st.name}</div>
+                      <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>{st.target} · {st.hold}s halten</div>
+                    </div>
+                    <button onClick={() => setTimer({ seconds: st.hold, accent: day.accent, startedAt: Date.now(), label: 'Halten' })} title="Halten starten"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: day.accent + '20', color: day.accent, border: `1px solid ${day.accent}40`, borderRadius: 9, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                      <Play size={13} /> {st.hold}s
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 11, color: '#666', margin: '6px 0 0', lineHeight: 1.5 }}>{st.tip}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ border: '1px solid #f8717130', borderRadius: 14, padding: '14px', marginTop: 10, background: '#160e10' }}>
           <p style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10, color: '#f87171', letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 10px' }}><AlertTriangle size={13} /> Danger Zone</p>
