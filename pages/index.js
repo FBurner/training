@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { DAYS, MOBILITY } from '../lib/data';
-import ExerciseFigure, { imageUrlFor } from '../components/ExerciseFigure';
+import { imageUrlFor } from '../components/ExerciseFigure';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
-  TrendingUp, User, Weight, Info, X, SlidersHorizontal, Activity,
+  TrendingUp, User, Weight, Info, X, SlidersHorizontal, Activity, ImageOff,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints, kettlebell: Weight };
@@ -126,7 +126,7 @@ function InfoModal({ item, accent, onClose }) {
           </div>
           <button onClick={onClose} style={{ background: '#1a1a1a', border: '1px solid #ffffff12', borderRadius: 8, color: '#888', padding: 6, cursor: 'pointer', display: 'flex', flexShrink: 0 }}><X size={16} /></button>
         </div>
-        <div style={{ background: '#00000040', border: '1px solid #ffffff08', borderRadius: 12, padding: url && !imgErr ? 0 : '14px', margin: '10px 0 14px', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
+        <div style={{ background: '#00000040', border: '1px solid #ffffff08', borderRadius: 12, padding: url && !imgErr ? 0 : '28px 14px', margin: '10px 0 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden', minHeight: url && !imgErr ? 0 : 120 }}>
           {url && !imgErr ? (
             isVideo ? (
               <video src={url} autoPlay loop muted playsInline onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#000' }} />
@@ -134,7 +134,7 @@ function InfoModal({ item, accent, onClose }) {
               <img src={url} alt={item.name} loading="lazy" onError={() => setImgErr(true)} style={{ width: '100%', maxHeight: 260, objectFit: 'cover', borderRadius: 12, display: 'block', background: '#fff' }} />
             )
           ) : (
-            <ExerciseFigure exId={item.id} color={accent} size={210} />
+            <><ImageOff size={30} color="#555" /><span style={{ fontSize: 12, color: '#555' }}>Kein Foto verfügbar</span></>
           )}
         </div>
         {chips.length > 0 && (
