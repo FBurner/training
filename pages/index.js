@@ -7,7 +7,7 @@ import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
   Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
-  TrendingUp, User, Weight, Info, X, SlidersHorizontal,
+  TrendingUp, User, Weight, Info, X, SlidersHorizontal, Minus,
 } from 'lucide-react';
 
 const DAY_ICONS = { dumbbell: Dumbbell, back: PersonStanding, legs: Footprints, kettlebell: Weight };
@@ -624,19 +624,24 @@ function PlannerView({ onBack, onSaved }) {
             {d.exercises.map(ex => {
               const hist = history[ex.id] || [];
               const cur = Number(weights[ex.id]) || 0;
-              const base = cur || parseWeight(ex.weight) || 20;
-              const cap = Math.max(60, Math.ceil((base * 2) / 10) * 10);
+              const STEP = 2.5;
+              const bump = (delta) => setWeights(prev => {
+                const v = Math.max(0, Math.round(((Number(prev[ex.id]) || 0) + delta) * 2) / 2);
+                return { ...prev, [ex.id]: v };
+              });
               const spark = hist.slice(0, 8).reverse();
               const maxW = Math.max(1, ...spark.map(h => h.weight));
+              const stepBtn = { width: 40, height: 40, background: '#00000030', border: 'none', color: d.accent, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 };
               return (
                 <div key={ex.id} style={{ borderTop: '1px solid #ffffff06', padding: '12px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</span>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: d.accent, whiteSpace: 'nowrap' }}>{cur} kg</span>
+                    <div style={{ display: 'flex', alignItems: 'center', border: `1px solid ${d.accent}40`, borderRadius: 10, overflow: 'hidden' }}>
+                      <button onClick={() => bump(-STEP)} title="−2,5 kg" style={stepBtn}><Minus size={16} /></button>
+                      <span style={{ minWidth: 66, textAlign: 'center', fontSize: 14, fontWeight: 800, color: '#fff' }}>{cur} kg</span>
+                      <button onClick={() => bump(STEP)} title="+2,5 kg" style={stepBtn}><Plus size={16} /></button>
+                    </div>
                   </div>
-                  <input type="range" min={0} max={cap} step={2.5} value={cur}
-                    onChange={e => setWeights(prev => ({ ...prev, [ex.id]: Number(e.target.value) }))}
-                    style={{ width: '100%', accentColor: d.accent, cursor: 'pointer' }} />
                   {hist.length > 0 ? (
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginTop: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 30, flex: 1 }}>
