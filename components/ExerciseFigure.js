@@ -43,10 +43,11 @@ const IMG = {
   r6: 'Hyperextensions_(Back_Extensions)',
   l1: 'Leg_Press',
   l2: 'Leg_Extensions',
-  l3: 'Lying_Leg_Curls',
+  l3: 'Seated_Leg_Curl',
   l4: 'Standing_Calf_Raises',
-  l5: 'Barbell_Hip_Thrust',
   l6: 'Thigh_Abductor',
+  l7: 'Thigh_Adductor',
+  // l5 is now a kettlebell swing -> IMG_URL override below (removed Barbell_Hip_Thrust)
   k1: 'One-Arm_Kettlebell_Swings',
   k2: 'Goblet_Squat',
   k3: 'Alternating_Kettlebell_Press',   // real kettlebell press (was a barbell clean&press)
@@ -61,6 +62,8 @@ const IMG = {
 // Full-URL overrides (Wikimedia Commons) for exercises the free-exercise-db
 // lacks a correct photo for. Special:FilePath is a stable hotlinkable redirect.
 const IMG_URL = {
+  // Beine-day l5 is now a two-arm kettlebell swing
+  l5: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kettlebell_swing_with_arms_fully_extended.jpg?width=640',
   // two-hand kettlebell hinge (back-swing) = the KB deadlift/RDL position
   k5: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kettlebell_swing_with_arms_extended_upon_back_swing.jpg?width=640',
   // real kettlebell farmer's walk (Commons only has a video, no still)
