@@ -5,7 +5,7 @@ import { imageUrlFor } from '../components/ExerciseFigure';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   Dumbbell, PersonStanding, Footprints, BarChart3, Flame, Trophy, Save,
-  Check, Star, Circle, ChevronUp, ChevronDown, CornerDownRight, ArrowLeft,
+  Check, Star, Circle, ChevronUp, ChevronDown, ChevronRight, CornerDownRight, ArrowLeft,
   CalendarCheck, Layers, Plus, Clock, Home, Play, Trash2, AlertTriangle,
   TrendingUp, User, Weight, Info, X, SlidersHorizontal, Activity, ImageOff,
 } from 'lucide-react';
@@ -27,11 +27,15 @@ function parseWeight(str) {
 // Progressive-overload step: bigger jump for primary compound lifts.
 function stepFor(ex) { return ex.primary ? 5 : 2.5; }
 
-// Forced rest between repeats of the same day.
-const REST_DAYS = 6;
-function restDaysLeft(lastMs) {
+// Forced rest between repeats of the same day (per-day via day.restHours).
+const REST_HOURS = 144; // 6 days default
+function restLeftHours(lastMs, hours = REST_HOURS) {
   if (!lastMs) return 0;
-  return Math.max(0, Math.ceil(REST_DAYS - (Date.now() - lastMs) / 86400000));
+  return Math.max(0, hours - (Date.now() - lastMs) / 3600000);
+}
+function fmtRest(h) { // hours left (> 0)
+  if (h >= 24) { const d = Math.ceil(h / 24); return `${d} ${d === 1 ? 'Tag' : 'Tage'}`; }
+  return `${Math.ceil(h)} Std`;
 }
 function fmtDate(ms) {
   return new Date(ms).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
@@ -359,7 +363,7 @@ function StatsView({ onBack }) {
   );
 }
 
-function OverviewView({ onNew, onResume, onStats, onProfile, onPlanner, onMobility }) {
+function OverviewView({ onNew, onResume, onStats, onProfile, onPlanner, onMobility, onPreview }) {
   const [sessions, setSessions] = useState([]);
   const [active, setActive] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -410,11 +414,12 @@ function OverviewView({ onNew, onResume, onStats, onProfile, onPlanner, onMobili
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {Object.values(DAYS).map(d => {
               const last = lastByDay[d.id];
-              const left = restDaysLeft(last);
-              const ready = left === 0;
-              const nextMs = last ? last + REST_DAYS * 86400000 : null;
+              const rh = d.restHours ?? REST_HOURS;
+              const left = restLeftHours(last, rh);
+              const ready = left <= 0;
+              const nextMs = last ? last + rh * 3600000 : null;
               return (
-                <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#0d0d0d', border: `1px solid ${ready ? d.accent + '30' : '#ffffff08'}`, borderRadius: 12, padding: '12px 14px' }}>
+                <div key={d.id} onClick={() => onPreview && onPreview(d.id)} title="Plan ansehen" style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#0d0d0d', border: `1px solid ${ready ? d.accent + '30' : '#ffffff08'}`, borderRadius: 12, padding: '12px 14px', cursor: 'pointer' }}>
                   <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: (ready ? d.accent : '#666') + '18', border: `1px solid ${(ready ? d.accent : '#666')}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ready ? d.accent : '#888' }}>
                     <DayIcon name={d.icon} size={17} />
                   </div>
@@ -427,7 +432,7 @@ function OverviewView({ onNew, onResume, onStats, onProfile, onPlanner, onMobili
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#22c55e' }}><Play size={13} /> Bereit</span>
                     ) : (
                       <>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#f59e0b' }}><Clock size={13} /> Pause · {left} {left === 1 ? 'Tag' : 'Tage'}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#f59e0b' }}><Clock size={13} /> Pause · {fmtRest(left)}</span>
                         <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>ab {fmtDate(nextMs)}</div>
                       </>
                     )}
@@ -795,10 +800,110 @@ function MobilityView({ onBack }) {
   );
 }
 
+function DayPreview({ day, locked, restLabel, onBack, onStart }) {
+  const [infoItem, setInfoItem] = useState(null);
+  const accent = day.accent;
+  const label = { fontSize: 10, color: accent, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 700, margin: '0 0 10px' };
+  return (
+    <div style={{ minHeight: '100vh', background: day.bg, fontFamily: 'Inter, system-ui, sans-serif', color: '#fff', paddingBottom: 96 }}>
+      {infoItem && <InfoModal item={infoItem} accent={accent} onClose={() => setInfoItem(null)} />}
+      <div style={{ background: day.headerBg, borderBottom: '1px solid #ffffff08', padding: '18px 16px' }}>
+        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+          <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#00000030', border: '1px solid #ffffff12', borderRadius: 8, color: '#ccc', padding: '7px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginBottom: 12 }}><ArrowLeft size={15} /> Zurück</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: accent + '20', border: `1px solid ${accent}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent }}><DayIcon name={day.icon} size={22} /></div>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{day.label}</h1>
+              <div style={{ fontSize: 12, color: '#8a86a8', marginTop: 2 }}>{day.tag} · {day.duration} · {day.exercises.length} Übungen</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '16px' }}>
+        {day.warmup?.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={label}>Aktivierung · Warm-up</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {day.warmup.map(w => (
+                <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#00000030', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#eee' }}>{w.name}</div>
+                    <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>{w.target} · {w.reps}</div>
+                  </div>
+                  <span role="button" title="Info" onClick={() => setInfoItem(w)} style={{ display: 'flex', color: accent, opacity: 0.75, cursor: 'pointer' }}><Info size={16} /></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p style={label}>Übungen</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {day.exercises.map(ex => (
+            <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#00000030', border: '1px solid #ffffff08', borderRadius: 12, padding: '13px 14px' }}>
+              <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: accent + '18', border: `1px solid ${accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent }}>
+                {ex.primary ? <Star size={14} fill="currentColor" /> : <Circle size={11} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{ex.name}</span>
+                  {ex.posture && <span style={{ fontSize: 9, background: '#10b98115', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 700, letterSpacing: 1 }}>HALTUNG</span>}
+                </div>
+                <div style={{ fontSize: 11, color: '#8a86a8', marginTop: 2 }}>{ex.sets} × {ex.reps} · <span style={{ color: accent }}>{ex.weight}</span></div>
+              </div>
+              <span role="button" title="Info & Foto" onClick={() => setInfoItem(ex)} style={{ display: 'flex', color: accent, opacity: 0.8, cursor: 'pointer', flexShrink: 0 }}><Info size={17} /></span>
+            </div>
+          ))}
+        </div>
+
+        {day.stretches?.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <p style={label}>Dehnen · Cooldown</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {day.stretches.map(st => (
+                <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#00000030', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#eee' }}>{st.name}</div>
+                    <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>{st.target} · {st.hold}s halten</div>
+                  </div>
+                  <span role="button" title="Info" onClick={() => setInfoItem(st)} style={{ display: 'flex', color: accent, opacity: 0.75, cursor: 'pointer' }}><Info size={16} /></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {day.notes?.length > 0 && (
+          <div style={{ marginTop: 20, background: '#ffffff04', border: '1px solid #ffffff06', borderRadius: 14, padding: '14px' }}>
+            <p style={label}>Hinweise</p>
+            {day.notes.map((note, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 7 }}>
+                <span style={{ color: accent, flexShrink: 0 }}>·</span>
+                <p style={{ fontSize: 11, color: '#8a86a8', margin: 0, lineHeight: 1.6 }}>{note}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: day.bg + 'ee', backdropFilter: 'blur(8px)', borderTop: '1px solid #ffffff10', padding: '12px 16px' }}>
+        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+          <button onClick={() => { if (!locked) onStart(day.id); }} disabled={locked}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, background: locked ? '#1a1a1a' : accent, color: locked ? '#888' : '#fff', border: locked ? '1px solid #ffffff10' : 'none', borderRadius: 12, padding: '15px', fontSize: 16, fontWeight: 800, cursor: locked ? 'not-allowed' : 'pointer' }}>
+            {locked ? <><Clock size={18} /> Pause · noch {restLabel}</> : <><Play size={18} /> Session starten</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TrainingApp() {
   const { data: session, status } = useSession();
-  const [view, setView] = useState('overview'); // 'overview' | 'training' | 'stats'
+  const [view, setView] = useState('overview'); // 'overview' | 'training' | 'stats' | 'preview' | ...
   const [activeDay, setActiveDay] = useState('brust');
+  const [previewDay, setPreviewDay] = useState('brust');
   const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {}, fullbody: {}, fullA: {}, fullB: {} });
   const [allWeights, setAllWeights] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {}, fullbody: {}, fullA: {}, fullB: {} });
   const [profileWeights, setProfileWeights] = useState({}); // last working weight per exercise
@@ -872,7 +977,7 @@ export default function TrainingApp() {
     })();
   }, [status]);
 
-  const cooldownFor = (dayId) => restDaysLeft(lastDoneByDay[dayId]);
+  const cooldownFor = (dayId) => restLeftHours(lastDoneByDay[dayId], DAYS[dayId]?.restHours ?? REST_HOURS);
 
   if (status === "loading") return <div style={{ minHeight: "100vh", background: "#0c0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#6b6890", fontFamily: "Inter, sans-serif" }}>Laden…</div>;
   if (!session) return null;
@@ -979,11 +1084,24 @@ export default function TrainingApp() {
     onProfile={() => setView('profile')}
     onPlanner={() => setView('planner')}
     onMobility={() => setView('mobility')}
+    onPreview={(id) => { setPreviewDay(id); setView('preview'); }}
   />;
 
   if (view === 'profile') return <ProfileView onBack={() => setView('overview')} />;
 
   if (view === 'mobility') return <MobilityView onBack={() => setView('overview')} />;
+
+  if (view === 'preview' && DAYS[previewDay]) {
+    const pd = DAYS[previewDay];
+    const cd = cooldownFor(previewDay);
+    return <DayPreview
+      day={pd}
+      locked={cd > 0}
+      restLabel={cd > 0 ? fmtRest(cd) : null}
+      onBack={() => setView('overview')}
+      onStart={(id) => { setActiveDay(id); persistActive(id, allSets[id] || {}, allWeights[id] || {}); setView('training'); }}
+    />;
+  }
 
   if (view === 'planner') return <PlannerView
     onBack={() => setView('overview')}
@@ -1005,24 +1123,23 @@ export default function TrainingApp() {
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
         <button onClick={() => setView('overview')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: 8, color: '#888', padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}><ArrowLeft size={15} /> Zurück</button>
         <h1 style={{ fontSize: 24, fontWeight: 800, margin: '18px 0 6px' }}>Tag wählen</h1>
-        <p style={{ color: '#6b6890', fontSize: 14, margin: '0 0 22px' }}>Womit startest du heute?</p>
-        <p style={{ color: '#555', fontSize: 12, margin: '-14px 0 18px' }}>Nach jeder Einheit: {REST_DAYS} Tage Pause für diesen Tag.</p>
+        <p style={{ color: '#6b6890', fontSize: 14, margin: '0 0 22px' }}>Tippe einen Tag, um den Plan anzusehen — starten kannst du dann dort.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {Object.values(DAYS).map(d => {
             const cd = cooldownFor(d.id);
             const locked = cd > 0;
             return (
-              <button key={d.id} disabled={locked}
-                onClick={() => { if (locked) return; setActiveDay(d.id); persistActive(d.id, allSets[d.id] || {}, allWeights[d.id] || {}); setView('training'); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, background: locked ? '#111' : d.accent + '12', border: `1px solid ${locked ? '#ffffff10' : d.accent + '40'}`, borderRadius: 14, padding: '18px 16px', cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'left', opacity: locked ? 0.55 : 1 }}>
-                <div style={{ width: 46, height: 46, borderRadius: 12, flexShrink: 0, background: (locked ? '#888' : d.accent) + '20', border: `1px solid ${(locked ? '#888' : d.accent)}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: locked ? '#888' : d.accent }}><DayIcon name={d.icon} size={24} /></div>
+              <button key={d.id}
+                onClick={() => { setPreviewDay(d.id); setView('preview'); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, background: d.accent + '12', border: `1px solid ${d.accent}40`, borderRadius: 14, padding: '18px 16px', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ width: 46, height: 46, borderRadius: 12, flexShrink: 0, background: d.accent + '20', border: `1px solid ${d.accent}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: d.accent }}><DayIcon name={d.icon} size={24} /></div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: locked ? '#888' : '#fff' }}>{d.label}</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{d.label}</div>
                   <div style={{ fontSize: 12, color: locked ? '#f59e0b' : '#6b6890', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {locked ? <><Clock size={12} /> Erst in {cd} {cd === 1 ? 'Tag' : 'Tagen'} wieder</> : `${d.tag} · ${d.duration}`}
+                    {locked ? <><Clock size={12} /> Pause · noch {fmtRest(cd)}</> : `${d.tag} · ${d.duration}`}
                   </div>
                 </div>
-                <span style={{ color: locked ? '#555' : d.accent, display: 'flex' }}>{locked ? <Clock size={20} /> : <Play size={20} />}</span>
+                <span style={{ color: '#555', display: 'flex' }}><ChevronRight size={20} /></span>
               </button>
             );
           })}
