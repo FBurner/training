@@ -52,6 +52,11 @@ const IMG = {
   k2: 'Goblet_Squat',
   k3: 'Alternating_Kettlebell_Press',   // real kettlebell press (was a barbell clean&press)
   k4: 'Alternating_Kettlebell_Row',     // confirmed kettlebell row
+  // Full-body day (best-effort free-exercise-db slugs; placeholder if unresolved)
+  f1: 'Barbell_Bench_Press_-_Medium_Grip', f2: 'Incline_Dumbbell_Press', f3: 'Wide-Grip_Lat_Pulldown',
+  f4: 'Seated_Cable_Rows', f5: 'Leg_Press', f6: 'Seated_Leg_Curl', f7: 'Barbell_Hip_Thrust',
+  f8: 'Thigh_Abductor', f9: 'Thigh_Adductor', f10: 'Standing_Calf_Raises', f11: 'Side_Lateral_Raise',
+  f12: 'Face_Pull', f13: 'Triceps_Pushdown', f14: 'Dumbbell_Bicep_Curl',
   // k5 (KB deadlift) and k6 (farmer's walk) have no correct photo in the
   // dataset -> intentionally fall back to the accurate SVG diagram.
   // Glute bridge / floor hip thrust (activation + warm-up)
