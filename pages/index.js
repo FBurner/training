@@ -266,7 +266,7 @@ function StatsView({ onBack }) {
     day: s.day,
   }));
 
-  const dayCount = { brust: 0, ruecken: 0, beine: 0, kettlebell: 0, fullbody: 0 };
+  const dayCount = { brust: 0, ruecken: 0, beine: 0, kettlebell: 0, fullbody: 0, fullA: 0, fullB: 0 };
   history.forEach(s => { if (dayCount[s.day] !== undefined) dayCount[s.day]++; });
 
   return (
@@ -302,6 +302,8 @@ function StatsView({ onBack }) {
               { id: 'beine', label: 'Beine', icon: 'legs', color: '#f59e0b', count: dayCount.beine },
               { id: 'kettlebell', label: 'Kettlebell', icon: 'kettlebell', color: '#10b981', count: dayCount.kettlebell },
               { id: 'fullbody', label: 'Full Body', icon: 'fullbody', color: '#a855f7', count: dayCount.fullbody },
+              { id: 'fullA', label: 'Full Body A', icon: 'fullbody', color: '#8b5cf6', count: dayCount.fullA },
+              { id: 'fullB', label: 'Full Body B', icon: 'fullbody', color: '#d946ef', count: dayCount.fullB },
             ].map(d => (
               <div key={d.id} style={{ flex: '1 1 40%', background: d.color + '10', border: `1px solid ${d.color}25`, borderRadius: 10, padding: '12px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: d.color }}>{d.count}</div>
@@ -797,8 +799,8 @@ export default function TrainingApp() {
   const { data: session, status } = useSession();
   const [view, setView] = useState('overview'); // 'overview' | 'training' | 'stats'
   const [activeDay, setActiveDay] = useState('brust');
-  const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {}, fullbody: {} });
-  const [allWeights, setAllWeights] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {}, fullbody: {} });
+  const [allSets, setAllSets] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {}, fullbody: {}, fullA: {}, fullB: {} });
+  const [allWeights, setAllWeights] = useState({ brust: {}, ruecken: {}, beine: {}, kettlebell: {}, fullbody: {}, fullA: {}, fullB: {} });
   const [profileWeights, setProfileWeights] = useState({}); // last working weight per exercise
   const [lastDoneByDay, setLastDoneByDay] = useState({}); // day -> last completedAt (ms)
   const [timer, setTimer] = useState(null);
@@ -1115,7 +1117,7 @@ export default function TrainingApp() {
       {/* Exercises */}
       <div style={{ maxWidth: 600, margin: '14px auto 0', padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {day.exercises.map(ex => (
-          <ExerciseCard key={ex.id} ex={ex} accent={day.accent} accentDim={day.accentDim} bgCard={day.bg === '#0c0a14' ? '#13111a' : day.bg === '#080c12' ? '#0d1117' : day.bg === '#07120e' ? '#0c1a15' : day.bg === '#0d0716' ? '#150d22' : '#110e00'} completedSets={completedSets} onToggle={toggle} onSkip={skip} weight={(allWeights[activeDay] || {})[ex.id] ?? ''} onWeight={setWeight} prevWeight={profileWeights[ex.id]} />
+          <ExerciseCard key={ex.id} ex={ex} accent={day.accent} accentDim={day.accentDim} bgCard={day.bg === '#0c0a14' ? '#13111a' : day.bg === '#080c12' ? '#0d1117' : day.bg === '#07120e' ? '#0c1a15' : day.bg === '#0d0716' ? '#150d22' : day.bg === '#0b0a1c' ? '#141330' : day.bg === '#140617' ? '#1e0a22' : '#110e00'} completedSets={completedSets} onToggle={toggle} onSkip={skip} weight={(allWeights[activeDay] || {})[ex.id] ?? ''} onWeight={setWeight} prevWeight={profileWeights[ex.id]} />
         ))}
 
         {finished && (
