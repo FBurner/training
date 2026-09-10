@@ -62,7 +62,7 @@ const IMG = {
   fb1: 'Incline_Dumbbell_Press', fb2: 'Seated_Cable_Rows', fb3: 'Seated_Leg_Curl', fb4: 'Thigh_Abductor', fb5: 'Thigh_Adductor', fb6: 'Face_Pull', fb7: 'Cable_Hammer_Curls_-_Rope_Attachment', fb8: 'Triceps_Pushdown',
   fa8: 'Cable_Hammer_Curls_-_Rope_Attachment',
   // PPL — Push
-  pu1: 'Barbell_Bench_Press_-_Medium_Grip', pu2: 'Incline_Dumbbell_Press', pu3: 'Dumbbell_Shoulder_Press', pu4: 'Cable_Crossover', pu5: 'Side_Lateral_Raise', pu6: 'Dips_-_Triceps_Version', pu7: 'Triceps_Pushdown',
+  pu1: 'Barbell_Bench_Press_-_Medium_Grip', pu2: 'Incline_Dumbbell_Press', pu3: 'Dumbbell_Shoulder_Press', pu4: 'Cable_Crossover', pu5: 'Side_Lateral_Raise', pu6: 'Leverage_Chest_Press', pu7: 'Triceps_Pushdown',
   // PPL — Pull
   pl1: 'Wide-Grip_Lat_Pulldown', pl2: 'Seated_Cable_Rows', pl3: 'Pullups', pl4: 'One-Arm_Dumbbell_Row', pl5: 'Machine_Bicep_Curl', pl6: 'Hammer_Curls',
   // PPL — Legs
