@@ -61,6 +61,12 @@ const IMG = {
   fa1: 'Barbell_Bench_Press_-_Medium_Grip', fa2: 'Wide-Grip_Lat_Pulldown', fa3: 'Leg_Press', fa4: 'Barbell_Hip_Thrust', fa5: 'Side_Lateral_Raise', fa6: 'Triceps_Pushdown', fa7: 'Standing_Calf_Raises',
   fb1: 'Incline_Dumbbell_Press', fb2: 'Seated_Cable_Rows', fb3: 'Seated_Leg_Curl', fb4: 'Thigh_Abductor', fb5: 'Thigh_Adductor', fb6: 'Face_Pull', fb7: 'Cable_Hammer_Curls_-_Rope_Attachment', fb8: 'Triceps_Pushdown',
   fa8: 'Cable_Hammer_Curls_-_Rope_Attachment',
+  // PPL — Push
+  pu1: 'Barbell_Bench_Press_-_Medium_Grip', pu2: 'Incline_Dumbbell_Press', pu3: 'Dumbbell_Shoulder_Press', pu4: 'Cable_Crossover', pu5: 'Side_Lateral_Raise', pu6: 'Dips_-_Triceps_Version', pu7: 'Triceps_Pushdown',
+  // PPL — Pull
+  pl1: 'Wide-Grip_Lat_Pulldown', pl2: 'Seated_Cable_Rows', pl3: 'Pullups', pl4: 'One-Arm_Dumbbell_Row', pl5: 'Machine_Bicep_Curl', pl6: 'Hammer_Curls',
+  // PPL — Legs
+  lg1: 'Barbell_Full_Squat', lg2: 'Leg_Press', lg3: 'Seated_Leg_Curl', lg4: 'Leg_Extensions', lg5: 'Goblet_Squat', lg6: 'Seated_Calf_Raise',
   // k5 (KB deadlift) and k6 (farmer's walk) have no correct photo in the
   // dataset -> intentionally fall back to the accurate SVG diagram.
   // Glute bridge / floor hip thrust (activation + warm-up)
