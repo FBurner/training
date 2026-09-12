@@ -64,7 +64,7 @@ const IMG = {
   // PPL — Push
   pu1: 'Barbell_Bench_Press_-_Medium_Grip', pu2: 'Incline_Dumbbell_Press', pu3: 'Dumbbell_Shoulder_Press', pu4: 'Cable_Crossover', pu5: 'Side_Lateral_Raise', pu6: 'Leverage_Chest_Press', pu7: 'Triceps_Pushdown',
   // PPL — Pull
-  pl1: 'Wide-Grip_Lat_Pulldown', pl2: 'Seated_Cable_Rows', pl3: 'Pullups', pl4: 'One-Arm_Dumbbell_Row', pl5: 'Machine_Bicep_Curl', pl6: 'Hammer_Curls',
+  pl1: 'Wide-Grip_Lat_Pulldown', pl2: 'Seated_Cable_Rows', pl3: 'Close-Grip_Front_Lat_Pulldown', pl4: 'One-Arm_Dumbbell_Row', pl5: 'Machine_Bicep_Curl', pl6: 'Hammer_Curls',
   // PPL — Legs
   lg1: 'Barbell_Full_Squat', lg2: 'Leg_Press', lg3: 'Seated_Leg_Curl', lg4: 'Leg_Extensions', lg5: 'Goblet_Squat', lg6: 'Seated_Calf_Raise',
   // k5 (KB deadlift) and k6 (farmer's walk) have no correct photo in the
