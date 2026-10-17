@@ -68,7 +68,7 @@ const IMG = {
   // PPL — Legs
   lg1: 'Sled_Hack_Squat', lg2: 'Leg_Press', lg3: 'Seated_Leg_Curl', lg4: 'Leg_Extensions', lg5: 'Goblet_Squat', lg6: 'Seated_Calf_Raise',
   // Mobility day (KB + sandbag) — best-effort; sandbag moves fall back to placeholder
-  mo2: 'Advanced_Kettlebell_Windmill', mo3: 'Kettlebell_Turkish_Get-Up_(Squat_style)', mo4: 'Goblet_Squat', mo5: 'Good_Morning',
+  mo2: 'Advanced_Kettlebell_Windmill', mo3: 'Cossack_Squat', mo4: 'Goblet_Squat', mo5: 'Good_Morning', mo7: 'Curtsy_Lunge',
   // k5 (KB deadlift) and k6 (farmer's walk) have no correct photo in the
   // dataset -> intentionally fall back to the accurate SVG diagram.
   // Glute bridge / floor hip thrust (activation + warm-up)
