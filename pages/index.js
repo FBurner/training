@@ -312,7 +312,7 @@ function StatsView({ onBack }) {
               { id: 'pull', label: 'Pull', icon: 'back', color: '#06b6d4', count: dayCount.pull },
               { id: 'legs', label: 'Legs', icon: 'legs', color: '#84cc16', count: dayCount.legs },
               { id: 'mobil', label: 'Mobility', icon: 'mobil', color: '#14b8a6', count: dayCount.mobil },
-              { id: 'fbpairs', label: 'Full Body Pairs', icon: 'fullbody', color: '#f97316', count: dayCount.fbpairs },
+              { id: 'fbpairs', label: 'Full Body Komplett', icon: 'fullbody', color: '#f97316', count: dayCount.fbpairs },
             ].map(d => (
               <div key={d.id} style={{ flex: '1 1 40%', background: d.color + '10', border: `1px solid ${d.color}25`, borderRadius: 10, padding: '12px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: d.color }}>{d.count}</div>
