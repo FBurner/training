@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { DAYS, MOBILITY } from '../lib/data';
 import { imageUrlFor } from '../components/ExerciseFigure';
@@ -845,8 +845,12 @@ function DayPreview({ day, locked, restLabel, onBack, onStart }) {
 
         <p style={label}>Übungen</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {day.exercises.map(ex => (
-            <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#00000030', border: '1px solid #ffffff08', borderRadius: 12, padding: '13px 14px' }}>
+          {day.exercises.map((ex, i) => (
+            <Fragment key={ex.id}>
+            {ex.finisher && !day.exercises[i - 1]?.finisher && (
+              <p style={{ fontSize: 10, color: accent, letterSpacing: 2, textTransform: 'uppercase', margin: '8px 0 0', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Flame size={13} /> Finisher · 2 Runden</p>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#00000030', border: '1px solid #ffffff08', borderRadius: 12, padding: '13px 14px' }}>
               <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: accent + '18', border: `1px solid ${accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent }}>
                 {ex.primary ? <Star size={14} fill="currentColor" /> : <Circle size={11} />}
               </div>
@@ -859,6 +863,7 @@ function DayPreview({ day, locked, restLabel, onBack, onStart }) {
               </div>
               <span role="button" title="Info & Foto" onClick={() => setInfoItem(ex)} style={{ display: 'flex', color: accent, opacity: 0.8, cursor: 'pointer', flexShrink: 0 }}><Info size={17} /></span>
             </div>
+            </Fragment>
           ))}
         </div>
 
@@ -1104,7 +1109,7 @@ export default function TrainingApp() {
       locked={cd > 0}
       restLabel={cd > 0 ? fmtRest(cd) : null}
       onBack={() => setView('overview')}
-      onStart={(id) => { setActiveDay(id); persistActive(id, allSets[id] || {}, allWeights[id] || {}); setView('training'); }}
+      onStart={(id) => { const fresh = {}; setAllSets(prev => ({ ...prev, [id]: fresh })); setActiveDay(id); persistActive(id, fresh, allWeights[id] || {}); setView('training'); }}
     />;
   }
 
@@ -1238,8 +1243,13 @@ export default function TrainingApp() {
 
       {/* Exercises */}
       <div style={{ maxWidth: 600, margin: '14px auto 0', padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {day.exercises.map(ex => (
-          <ExerciseCard key={ex.id} ex={ex} accent={day.accent} accentDim={day.accentDim} bgCard={day.bg === '#0c0a14' ? '#13111a' : day.bg === '#080c12' ? '#0d1117' : day.bg === '#07120e' ? '#0c1a15' : day.bg === '#0d0716' ? '#150d22' : day.bg === '#0b0a1c' ? '#141330' : day.bg === '#140617' ? '#1e0a22' : day.bg === '#160a0a' ? '#1e0d0d' : day.bg === '#06131a' ? '#0c1a22' : day.bg === '#0e1405' ? '#141c08' : day.bg === '#061413' ? '#0c1c1a' : day.bg === '#160c04' ? '#1f1308' : '#110e00'} completedSets={completedSets} onToggle={toggle} onSkip={skip} weight={(allWeights[activeDay] || {})[ex.id] ?? ''} onWeight={setWeight} prevWeight={profileWeights[ex.id]} />
+        {day.exercises.map((ex, i) => (
+          <Fragment key={ex.id}>
+            {ex.finisher && !day.exercises[i - 1]?.finisher && (
+              <p style={{ fontSize: 10, color: day.accent, letterSpacing: 2, textTransform: 'uppercase', margin: '10px 0 2px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Flame size={14} /> Finisher · 2 Runden</p>
+            )}
+            <ExerciseCard ex={ex} accent={day.accent} accentDim={day.accentDim} bgCard={day.bg === '#0c0a14' ? '#13111a' : day.bg === '#080c12' ? '#0d1117' : day.bg === '#07120e' ? '#0c1a15' : day.bg === '#0d0716' ? '#150d22' : day.bg === '#0b0a1c' ? '#141330' : day.bg === '#140617' ? '#1e0a22' : day.bg === '#160a0a' ? '#1e0d0d' : day.bg === '#06131a' ? '#0c1a22' : day.bg === '#0e1405' ? '#141c08' : day.bg === '#061413' ? '#0c1c1a' : day.bg === '#160c04' ? '#1f1308' : '#110e00'} completedSets={completedSets} onToggle={toggle} onSkip={skip} weight={(allWeights[activeDay] || {})[ex.id] ?? ''} onWeight={setWeight} prevWeight={profileWeights[ex.id]} />
+          </Fragment>
         ))}
 
         {finished && (
