@@ -73,6 +73,8 @@ const IMG = {
   x1: 'Romanian_Deadlift', x2: 'Pullups', x3: 'Barbell_Bench_Press_-_Medium_Grip', x4: 'Barbell_Hip_Thrust', x5: 'Dumbbell_Shoulder_Press', x6: 'Leg_Press', x7: 'Face_Pull', x9: 'Plank',
   // Upper Body day
   u1: 'Barbell_Bench_Press_-_Medium_Grip', u2: 'Wide-Grip_Lat_Pulldown', u3: 'Dumbbell_Shoulder_Press', u4: 'Seated_Cable_Rows', u5: 'Dumbbell_Bicep_Curl', u6: 'Triceps_Pushdown', u7: 'Hyperextensions_(Back_Extensions)',
+  // Schulter & Nacken day — best-effort; neck isometrics/Y-raise/external rotation fall back to placeholder
+  sd1: 'Face_Pull', sd2: 'Reverse_Machine_Flyes', sd3: 'Cable_Seated_Lateral_Raise', sd6: 'Dumbbell_Shrug',
   // k5 (KB deadlift) and k6 (farmer's walk) have no correct photo in the
   // dataset -> intentionally fall back to the accurate SVG diagram.
   // Glute bridge / floor hip thrust (activation + warm-up)
